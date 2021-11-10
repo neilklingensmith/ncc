@@ -1,0 +1,4 @@
+*.swp
+ncc
+*.o
+tags
