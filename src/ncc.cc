@@ -17,7 +17,8 @@ int main(int argc, char **argv) {
         std::cout << "File name: " << argv[1] << "\n";
     }
 
-    lex->getNextLexeme();
-
+    while(1) {
+        lex->getNextLexeme();
+    }
     return 0;
 }

@@ -13,7 +13,8 @@ CFLAGS += -g
 
 OBJS +=  \
 	ncc.o \
-    lexicalparser.o \
+	lexicalparser.o \
+	lexeme.o \
 
 
 OBJ = $(patsubst %,$(ODIR)/%,$(OBJS))

@@ -3,7 +3,17 @@
 #include "lexicalparser.h"
 #include <iostream>     // std::cin, std::cout
 #include <fstream>      // std::ifstream
+#include <cstring>
+#include <map>
 
+
+
+
+static std::map<std::string, int> keyword_map = {
+{"if", KEYWORD_IF},
+{"int", KEYWORD_INT},
+{"while", KEYWORD_WHILE}
+};
 
 void lexicalParser::Expected(std::string err) {
     std::cerr << err << "\n";
@@ -24,7 +34,7 @@ void lexicalParser::fin() {
 
 
 int lexicalParser::isWhite(char c) {
-    return (c == ' ') || (c == '\t');
+    return (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r');
 }
 
 
@@ -108,7 +118,11 @@ std::string lexicalParser::getOp() {
 }
 
 void lexicalParser::getChar() {
-    this->is->get(this->look);
+    this->look = this->is->get();
+    if (this->look == EOF) {
+        std::cout << "[getChar] GOT EOF!!!\n";
+//        exit(0);
+    }
 }
 
 
@@ -127,19 +141,45 @@ lexicalParser::lexicalParser(char *fname){
 }
 
 lexeme lexicalParser::getNextLexeme() {
-    lexeme *nextLexeme = new lexeme;
+    lexeme nextLexeme;
 
     // Skip to the next non-blank line
+/*
     while(look == '\r') {
         fin();
     }
-
+*/
+    skipWhite();
     if(isAlpha(look)) {
         std::string l = getName();
-        std::cout << "[getNextLexeme] got \"" << l << "\"\n";
+
+        auto search = keyword_map.find(l); // Look up the string in the keyword list
+        if (search != keyword_map.end()) {
+            // Got keyword
+            std::cout << "[getNextLexeme] got keyword \"" << l << "\"\n";
+        } else {
+            // Got identifier
+            std::cout << "[getNextLexeme] got identifier \"" << l << "\"\n";
+        }
         // Look up the lexeme
     } else if (isDigit(look)) {
         int n = getNum();
-        std::cout << "[getNextLexeme] got " << n << "\n";
+        nextLexeme.setType(LEXEME_TYPE_INTEGER);
+        std::cout << "[getNextLexeme] got number " << n << "\n";
+    } else if (isOp(look)) {
+        std::string op = getOp();
+        if(op == "+" || op == "-") {
+            nextLexeme.setType(LEXEME_TYPE_ADDOP);
+        } else if( op == "*" || op == "/") {
+            nextLexeme.setType(LEXEME_TYPE_MULOP);
+        }
+        std::cout << "[getNextLexeme] got operator " << op << "\n";
+    } else {
+        std::cout << "[getNextLexeme] Got unknown " << look << "\n";
+        exit(0);
     }
+
+    return nextLexeme;
 }
+
+

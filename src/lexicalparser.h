@@ -8,11 +8,16 @@
 #ifndef __LEXICALPARSER_H__
 #define __LEXICALPARSER_H__
 
+#define KEYWORD_IF        0
+#define KEYWORD_INT       1
+#define KEYWORD_WHILE     2
+
+
 class lexicalParser {
 private:
     char *fname;
     std::ifstream *is;
-    char look; // lookahead character
+    int look; // lookahead character
 
 
     void Expected(std::string err);
