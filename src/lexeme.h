@@ -7,6 +7,9 @@
 #define LEXEME_TYPE_IDENT       3
 #define LEXEME_TYPE_KEYWORD     4
 #define LEXEME_TYPE_INTEGER     4
+#define LEXEME_TYPE_SEMICOLON   5
+#define LEXEME_TYPE_PARENTHESES 6
+#define LEXEME_TYPE_BRACES      7
 
 
 class lexeme {

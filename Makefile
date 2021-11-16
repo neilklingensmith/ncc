@@ -13,7 +13,7 @@ CFLAGS += -g
 
 OBJS +=  \
 	ncc.o \
-	lexicalparser.o \
+	lexicalscanner.o \
 	lexeme.o \
 
 

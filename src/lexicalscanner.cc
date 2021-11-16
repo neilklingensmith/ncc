@@ -1,6 +1,6 @@
 
 
-#include "lexicalparser.h"
+#include "lexicalscanner.h"
 #include <iostream>     // std::cin, std::cout
 #include <fstream>      // std::ifstream
 #include <cstring>
@@ -12,17 +12,17 @@
 static std::map<std::string, int> keyword_map = {
 {"if", KEYWORD_IF},
 {"int", KEYWORD_INT},
-{"while", KEYWORD_WHILE}
+{"while", KEYWORD_WHILE},
 };
 
-void lexicalParser::Expected(std::string err) {
+void lexicalScanner::Expected(std::string err) {
     std::cerr << err << "\n";
     abort();
 }
 
 
 
-void lexicalParser::fin() {
+void lexicalScanner::fin() {
     if (this->look == '\r'){
         getChar();
     }
@@ -33,19 +33,19 @@ void lexicalParser::fin() {
 
 
 
-int lexicalParser::isWhite(char c) {
+int lexicalScanner::isWhite(char c) {
     return (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r');
 }
 
 
-void lexicalParser::skipWhite() {
+void lexicalScanner::skipWhite() {
     while (isWhite(this->look)) {
         this->getChar();
     }
 }
 
 
-int lexicalParser::isAlpha(char c) {
+int lexicalScanner::isAlpha(char c) {
     c = toupper(c);
     if((c >= 'A') && (c <= 'Z')) {
         return 1;
@@ -54,7 +54,7 @@ int lexicalParser::isAlpha(char c) {
     }
 }
 
-int lexicalParser::isDigit(char c) {
+int lexicalScanner::isDigit(char c) {
     if((c >= '0') && (c <= '9')) {
         return 1;
     } else {
@@ -62,12 +62,12 @@ int lexicalParser::isDigit(char c) {
     }
 }
 
-int lexicalParser::isAlNum(char c) {
+int lexicalScanner::isAlNum(char c) {
     return isAlpha(c) | isDigit(c);
 }
 
 
-int lexicalParser::isAddop(char c) {
+int lexicalScanner::isAddop(char c) {
     if((c =='+') || (c == '-')) {
         return 1;
     } else {
@@ -76,7 +76,7 @@ int lexicalParser::isAddop(char c) {
 }
 
 
-std::string lexicalParser::getName() {
+std::string lexicalScanner::getName() {
     std::string name;
     if(!isAlpha(this->look)) {
         Expected("Name");
@@ -89,7 +89,7 @@ std::string lexicalParser::getName() {
     return name;
 }
 
-int lexicalParser::getNum() {
+int lexicalScanner::getNum() {
     std::string num;
 
     if(!isDigit(this->look)) {
@@ -103,7 +103,7 @@ int lexicalParser::getNum() {
     return std::stoi(num);
 }
 
-std::string lexicalParser::getOp() {
+std::string lexicalScanner::getOp() {
     std::string op;
 
     if(!isOp(look)) {
@@ -117,7 +117,7 @@ std::string lexicalParser::getOp() {
     return op;
 }
 
-void lexicalParser::getChar() {
+void lexicalScanner::getChar() {
     this->look = this->is->get();
     if (this->look == EOF) {
         std::cout << "[getChar] GOT EOF!!!\n";
@@ -126,13 +126,13 @@ void lexicalParser::getChar() {
 }
 
 
-int lexicalParser::isOp(char c) {
+int lexicalScanner::isOp(char c) {
     return (c == '+') || (c == '-') || (c =='*') || (c == '/') || (c == '<') || (c == '>') || (c == ':') || (c == '=');
 }
 
 
 
-lexicalParser::lexicalParser(char *fname){
+lexicalScanner::lexicalScanner(char *fname){
     is = new std::ifstream(fname);
     this->fname = new char[strlen(fname)];
     strcpy(this->fname, fname);
@@ -140,7 +140,7 @@ lexicalParser::lexicalParser(char *fname){
     getChar();
 }
 
-lexeme lexicalParser::getNextLexeme() {
+lexeme lexicalScanner::getNextLexeme() {
     lexeme nextLexeme;
 
     // Skip to the next non-blank line
@@ -157,9 +157,11 @@ lexeme lexicalParser::getNextLexeme() {
         if (search != keyword_map.end()) {
             // Got keyword
             std::cout << "[getNextLexeme] got keyword \"" << l << "\"\n";
+            nextLexeme.setType(LEXEME_TYPE_KEYWORD);
         } else {
             // Got identifier
             std::cout << "[getNextLexeme] got identifier \"" << l << "\"\n";
+            nextLexeme.setType(LEXEME_TYPE_IDENT);
         }
         // Look up the lexeme
     } else if (isDigit(look)) {
@@ -174,6 +176,21 @@ lexeme lexicalParser::getNextLexeme() {
             nextLexeme.setType(LEXEME_TYPE_MULOP);
         }
         std::cout << "[getNextLexeme] got operator " << op << "\n";
+    } else if (look == ';') {
+        std::cout << "Got semicolon. End of statement\n";
+        getChar();
+        skipWhite();
+        nextLexeme.setType(LEXEME_TYPE_SEMICOLON);
+    } else if (look == '(' || look == ')') {
+        std::cout << "Got parentheses\n";
+        getChar();
+        skipWhite();
+        nextLexeme.setType(LEXEME_TYPE_PARENTHESES);
+    } else if (look == '{' || look == '}') {
+        std::cout << "Got braces\n";
+        getChar();
+        skipWhite();
+        nextLexeme.setType(LEXEME_TYPE_BRACES);
     } else {
         std::cout << "[getNextLexeme] Got unknown " << look << "\n";
         exit(0);

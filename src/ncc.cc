@@ -1,19 +1,19 @@
 
-#include "lexicalparser.h"
+#include "lexicalscanner.h"
 #include "lexeme.h"
 #include <iostream>
 #include <fstream>
 
 
-lexicalParser *lex;
+lexicalScanner *lex;
 
 int main(int argc, char **argv) {
 
     // Parse command line parameters
     if(argc == 1) {
-        lex = new lexicalParser(NULL);
+        lex = new lexicalScanner(NULL);
     } else {
-        lex = new lexicalParser(argv[1]);
+        lex = new lexicalScanner(argv[1]);
         std::cout << "File name: " << argv[1] << "\n";
     }
 

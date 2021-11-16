@@ -13,7 +13,7 @@
 #define KEYWORD_WHILE     2
 
 
-class lexicalParser {
+class lexicalScanner {
 private:
     char *fname;
     std::ifstream *is;
@@ -36,7 +36,7 @@ private:
     void getChar();
 
 public:
-    lexicalParser(char *fname);
+    lexicalScanner(char *fname);
 
     lexeme getNextLexeme();
 };
