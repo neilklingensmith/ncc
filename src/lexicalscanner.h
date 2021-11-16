@@ -18,6 +18,7 @@ private:
     char *fname;
     std::ifstream *is;
     int look; // lookahead character
+    lexeme currLexeme;
 
 
     void Expected(std::string err);
@@ -39,6 +40,7 @@ public:
     lexicalScanner(char *fname);
 
     lexeme getNextLexeme();
+    lexeme peekLexeme();
 };
 
 #endif

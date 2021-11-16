@@ -140,15 +140,15 @@ lexicalScanner::lexicalScanner(char *fname){
     getChar();
 }
 
-lexeme lexicalScanner::getNextLexeme() {
-    lexeme nextLexeme;
+lexeme lexicalScanner::peekLexeme() {
+    return this->currLexeme;
+}
 
-    // Skip to the next non-blank line
-/*
-    while(look == '\r') {
-        fin();
-    }
-*/
+lexeme lexicalScanner::getNextLexeme() {
+
+
+    lexeme lastLexeme = this->currLexeme;
+
     skipWhite();
     if(isAlpha(look)) {
         std::string l = getName();
@@ -157,46 +157,53 @@ lexeme lexicalScanner::getNextLexeme() {
         if (search != keyword_map.end()) {
             // Got keyword
             std::cout << "[getNextLexeme] got keyword \"" << l << "\"\n";
-            nextLexeme.setType(LEXEME_TYPE_KEYWORD);
+            currLexeme.setType(LEXEME_TYPE_KEYWORD);
         } else {
             // Got identifier
             std::cout << "[getNextLexeme] got identifier \"" << l << "\"\n";
-            nextLexeme.setType(LEXEME_TYPE_IDENT);
+            currLexeme.setType(LEXEME_TYPE_IDENT);
         }
         // Look up the lexeme
     } else if (isDigit(look)) {
         int n = getNum();
-        nextLexeme.setType(LEXEME_TYPE_INTEGER);
+        currLexeme.setType(LEXEME_TYPE_INTEGER);
         std::cout << "[getNextLexeme] got number " << n << "\n";
     } else if (isOp(look)) {
         std::string op = getOp();
         if(op == "+" || op == "-") {
-            nextLexeme.setType(LEXEME_TYPE_ADDOP);
+            currLexeme.setType(LEXEME_TYPE_ADDOP);
         } else if( op == "*" || op == "/") {
-            nextLexeme.setType(LEXEME_TYPE_MULOP);
+            currLexeme.setType(LEXEME_TYPE_MULOP);
+        } else if( op == "=") {
+            currLexeme.setType(LEXEME_TYPE_ASSIGNMENTOP);
         }
         std::cout << "[getNextLexeme] got operator " << op << "\n";
     } else if (look == ';') {
         std::cout << "Got semicolon. End of statement\n";
         getChar();
         skipWhite();
-        nextLexeme.setType(LEXEME_TYPE_SEMICOLON);
+        currLexeme.setType(LEXEME_TYPE_SEMICOLON);
     } else if (look == '(' || look == ')') {
         std::cout << "Got parentheses\n";
         getChar();
         skipWhite();
-        nextLexeme.setType(LEXEME_TYPE_PARENTHESES);
-    } else if (look == '{' || look == '}') {
-        std::cout << "Got braces\n";
+        currLexeme.setType(LEXEME_TYPE_PARENTHESES);
+    } else if (look == '{') {
+        std::cout << "Got open brace\n";
         getChar();
         skipWhite();
-        nextLexeme.setType(LEXEME_TYPE_BRACES);
+        currLexeme.setType(LEXEME_TYPE_OPENBRACE);
+    } else if (look == '}') {
+        std::cout << "Got close brace\n";
+        getChar();
+        skipWhite();
+        currLexeme.setType(LEXEME_TYPE_CLOSEBRACE);
     } else {
         std::cout << "[getNextLexeme] Got unknown " << look << "\n";
         exit(0);
     }
 
-    return nextLexeme;
+    return lastLexeme;
 }
 
 
