@@ -51,16 +51,37 @@ void parser::block() {
 
 }
 
+
+/*
+ * statement
+ *
+ * Processes statements, including assignments, if blocks, and while loops.
+ *
+ *
+ *
+ */
+
 void parser::statement() {
     std::cout << "\n\nProcessing statement..." << std::endl;
 
     
     lexeme l ;
 
-    // Eat up all the lexemes in the statement...
-    while(this->lex->peekLexeme().getType() != LEXEME_TYPE_SEMICOLON) {
-        std::cout << "[statement] peekLexeme.getType() = " << this->lex->peekLexeme().getType() << std::endl;
-        l = lex->getNextLexeme();
+    if(this->lex->peekLexeme().getType() == LEXEME_TYPE_KEYWORD) {
+        // Processing IF blocks
+        std::cerr << "[parser::statement] found keyword \"" << this->lex->peekLexeme().getText() << "\"" << std::endl;
+        // Eat up all the lexemes in the statement...
+        while(this->lex->peekLexeme().getType() != LEXEME_TYPE_SEMICOLON) {
+            std::cout << "[statement] peekLexeme.getType() = " << this->lex->peekLexeme().getType() << std::endl;
+            l = lex->getNextLexeme();
+        }
+    } else {
+        // Processing assignments
+        // Eat up all the lexemes in the statement...
+        while(this->lex->peekLexeme().getType() != LEXEME_TYPE_SEMICOLON) {
+            std::cout << "[statement] peekLexeme.getType() = " << this->lex->peekLexeme().getType() << std::endl;
+            l = lex->getNextLexeme();
+        }
     }
     // Eat the semicolong lexeme...
     if(this->lex->peekLexeme().getType() == LEXEME_TYPE_SEMICOLON) {

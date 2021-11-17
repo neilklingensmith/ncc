@@ -151,16 +151,18 @@ lexeme lexicalScanner::getNextLexeme() {
 
     skipWhite();
     if(isAlpha(look)) {
-        std::string l = getName();
+        this->currLexeme.setText(getName());
 
-        auto search = keyword_map.find(l); // Look up the string in the keyword list
+        auto search = keyword_map.find(this->currLexeme.getText()); // Look up the string in the keyword list
         if (search != keyword_map.end()) {
             // Got keyword
-            std::cout << "[getNextLexeme] got keyword \"" << l << "\"\n";
-            currLexeme.setType(LEXEME_TYPE_KEYWORD);
+            std::cout << "[getNextLexeme] got keyword \"" << this->currLexeme.getText() << "\"\n";
+            std::cout << "[getNextLexeme] Found " << search->first << " : " << search->second << std::endl;
+            currLexeme.setType(LEXEME_TYPE_KEYWORD);     // Set the lexeme type to keyword
+            this->currLexeme.setSubtype(search->second); // Set the type of keyword (IF, WHILE, etc.)
         } else {
             // Got identifier
-            std::cout << "[getNextLexeme] got identifier \"" << l << "\"\n";
+            std::cout << "[getNextLexeme] got identifier \"" << this->currLexeme.getText() << "\"\n";
             currLexeme.setType(LEXEME_TYPE_IDENT);
         }
         // Look up the lexeme
