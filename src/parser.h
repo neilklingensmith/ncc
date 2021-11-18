@@ -16,6 +16,10 @@ public:
     void error(const char *msg);
     void block();
     void statement();
+    void expression();
+    void term();
+    void signedfactor();
+    void factor();
 
 };
 #endif

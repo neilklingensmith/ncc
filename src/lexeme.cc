@@ -20,7 +20,7 @@ int lexeme::getSubtype() {
 }
 
 void lexeme::setSubtype(int newSubtype) {
-    this->subtype = newSubtype
+    this->subtype = newSubtype;
 }
 
 std::string lexeme::getText() {
@@ -29,4 +29,12 @@ std::string lexeme::getText() {
 
 void lexeme::setText(std::string newText) {
     this->text = newText;
+}
+
+int lexeme::getValue() {
+    return this->value;
+}
+
+void lexeme::setValue(int newValue) {
+    this->value = newValue;
 }

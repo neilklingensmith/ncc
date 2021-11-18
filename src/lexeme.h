@@ -38,6 +38,8 @@ public:
     int getSubtype();
     std::string getText();
     void setText(std::string newText);
+    int getValue();
+    void setValue(int newValue);
 private:
     int type;                    // lexeme type
     int subtype;                 // keyword type

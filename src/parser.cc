@@ -67,9 +67,20 @@ void parser::statement() {
     
     lexeme l ;
 
-    if(this->lex->peekLexeme().getType() == LEXEME_TYPE_KEYWORD) {
-        // Processing IF blocks
+    if(this->lex->peekLexeme().getType() == LEXEME_TYPE_IDENT) {
         std::cerr << "[parser::statement] found keyword \"" << this->lex->peekLexeme().getText() << "\"" << std::endl;
+        lexeme id = this->lex->getNextLexeme(); // Eat the identifier
+        l = this->lex->getNextLexeme(); // Eat the `='
+        if(l.getType() != LEXEME_TYPE_ASSIGNMENTOP) {
+            this->error("Expected `=' in assignment");
+        }
+        this->expression();
+    } else {
+        this->error("Expected: identifier at beginning of statement");
+    }
+#if 0
+    else if (this->lex->peekLexeme().getType() == LEXEME_TYPE_INTEGER) {
+        std::cerr << "[parser::statement] found integer " << this->lex->peekLexeme().getValue() << std::endl;
         // Eat up all the lexemes in the statement...
         while(this->lex->peekLexeme().getType() != LEXEME_TYPE_SEMICOLON) {
             std::cout << "[statement] peekLexeme.getType() = " << this->lex->peekLexeme().getType() << std::endl;
@@ -83,9 +94,45 @@ void parser::statement() {
             l = lex->getNextLexeme();
         }
     }
+#endif
     // Eat the semicolong lexeme...
     if(this->lex->peekLexeme().getType() == LEXEME_TYPE_SEMICOLON) {
         l = lex->getNextLexeme();
     }
     std::cout << "Done processing statement...\n\n";
+}
+
+/*
+ *
+ *
+ *
+ *
+ */
+void parser::expression() {
+    lexeme l;
+    // Eat up all the lexemes in the statement...
+    while(this->lex->peekLexeme().getType() != LEXEME_TYPE_SEMICOLON) {
+        std::cout << "[statement] peekLexeme.getType() = " << this->lex->peekLexeme().getType() << std::endl;
+        l = lex->getNextLexeme();
+    }
+
+}
+
+/*
+ *
+ *
+ *
+ *
+ */
+void parser::term() {
+
+}
+
+void parser::signedfactor() {
+
+}
+
+
+void parser::factor() {
+
 }
