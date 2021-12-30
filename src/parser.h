@@ -14,6 +14,7 @@
 
 class parser {
 private:
+    std::string *input_file_name;
     std::ostream *os;
     lexicalScanner *lex;
     std::string file_name;
@@ -21,14 +22,15 @@ private:
 public:
     parser(char *ifname, char *ofname);
     void emit(std::string&);
+    void emit(char*);
     void error(const char *msg);
     void block();
     void statement(std::map<std::string, identifier*>&symbolTable);
     void declaration(std::map<std::string, identifier*>&symbolTable);
-    void expression();
-    void term();
-    void signedfactor();
-    void factor();
+    void expression(std::map<std::string, identifier*>&symbolTable);
+    void term(std::map<std::string, identifier*>&symbolTable);
+    void signedfactor(std::map<std::string, identifier*>&symbolTable);
+    void factor(std::map<std::string, identifier*>&symbolTable);
 
 };
 #endif

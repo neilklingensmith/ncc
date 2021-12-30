@@ -13,6 +13,8 @@ private:
     char *fname;
     std::ifstream *is;
     int look; // lookahead character
+    unsigned int currLineNumber;
+    unsigned int currColumnNumber;
     lexeme currLexeme;
 
 
@@ -36,6 +38,8 @@ public:
 
     lexeme getNextLexeme();
     lexeme peekLexeme();
+    unsigned int getCurrLineNumber();
+    unsigned int getCurrColumnNumber();
 };
 
 #endif

@@ -119,12 +119,27 @@ std::string lexicalScanner::getOp() {
 
 void lexicalScanner::getChar() {
     this->look = this->is->get();
+    if(this->look == '\n') {
+        this->currLineNumber++;
+        currColumnNumber = 0;
+    }
+    if((this->look != '\n') && (this->look != '\r')){
+        currColumnNumber++;
+    }
     if (this->look == EOF) {
-        std::cout << "[getChar] GOT EOF!!!\n";
+//        std::cout << "[getChar] GOT EOF!!!\n";
 //        exit(0);
     }
 }
 
+unsigned int lexicalScanner::getCurrColumnNumber() {
+    return currColumnNumber;
+}
+
+
+unsigned int lexicalScanner::getCurrLineNumber() {
+    return currLineNumber;
+}
 
 int lexicalScanner::isOp(char c) {
     return (c == '+') || (c == '-') || (c =='*') || (c == '/') || (c == '<') || (c == '>') || (c == ':') || (c == '=');
@@ -133,6 +148,7 @@ int lexicalScanner::isOp(char c) {
 
 
 lexicalScanner::lexicalScanner(char *fname){
+    currLineNumber = 1;
     is = new std::ifstream(fname);
     this->fname = new char[strlen(fname)];
     strcpy(this->fname, fname);
@@ -150,6 +166,10 @@ lexeme lexicalScanner::getNextLexeme() {
     lexeme lastLexeme = this->currLexeme;
 
     skipWhite();
+    this->currLexeme.setValue(0);
+    this->currLexeme.setType(0);
+    char looktxt[2] = {(char)look,0};
+    currLexeme.setText(looktxt);
     if(isAlpha(look)) {
         this->currLexeme.setText(getName());
 
@@ -170,7 +190,9 @@ lexeme lexicalScanner::getNextLexeme() {
         // Look up the lexeme
     } else if (isDigit(look)) {
         int n = getNum();
+        std::string numstr = std::to_string(n);
         currLexeme.setValue(n);
+        currLexeme.setText(numstr);
         currLexeme.setType(LEXEME_TYPE_INTEGER);
         //std::cout << "[getNextLexeme] got number " << n << "\n";
     } else if (isOp(look)) {
@@ -182,12 +204,14 @@ lexeme lexicalScanner::getNextLexeme() {
         } else if( op == "=") {
             currLexeme.setType(LEXEME_TYPE_ASSIGNMENTOP);
         }
-        std::cout << "[getNextLexeme] got operator " << op << "\n";
+        currLexeme.setText(op);
+//        std::cout << "[getNextLexeme] got operator " << op << "\n";
     } else if (look == ';') {
         //std::cout << "Got semicolon. End of statement\n";
         getChar();
         skipWhite();
         currLexeme.setType(LEXEME_TYPE_SEMICOLON);
+        currLexeme.setText(";");
     } else if (look == '(' || look == ')') {
         //std::cout << "Got parentheses\n";
         getChar();
