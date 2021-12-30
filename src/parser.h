@@ -8,7 +8,7 @@
 #include "identifier.h"
 #include "identifier.h"
 #include <map>
-
+#include <stack>
 
 
 
@@ -27,10 +27,10 @@ public:
     void block();
     void statement(std::map<std::string, identifier*>&symbolTable);
     void declaration(std::map<std::string, identifier*>&symbolTable);
-    void expression(std::map<std::string, identifier*>&symbolTable);
-    void term(std::map<std::string, identifier*>&symbolTable);
-    void signedfactor(std::map<std::string, identifier*>&symbolTable);
-    void factor(std::map<std::string, identifier*>&symbolTable);
+    void expression(std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack);
+    void term(std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack);
+    void signedfactor(std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack);
+    void factor(std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack);
 
 };
 #endif

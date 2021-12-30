@@ -4,7 +4,6 @@
 #include "parser.h"
 #include <map>
 
-
 parser::parser(char *ifname, char *ofname) {
     input_file_name = new std::string(ifname);
     this->lex = new lexicalScanner(ifname);
@@ -161,7 +160,23 @@ void parser::declaration(std::map<std::string, identifier*>&symbolTable) {
 void parser::statement(std::map<std::string, identifier*>&symbolTable) {
 //    std::cout << "\n\nProcessing statement..." << std::endl;
 
-    
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Create a stack of data registers and address registers that are available for use in this statement
+    std::string dataRegNames[] = { "D7", "D6", "D5", "D4", "D3", "D2", "D1", "D0" };
+    std::string addrRegNames[] = { "A5", "A4", "A3", "A2", "A1", "A0" }; // A6 and A7 are the frame pointer and stack pointer, so can't use them.
+    std::stack<std::string>dataRegFreeStack; // Data registers that are available for use in this statement
+    std::stack<std::string>dataRegStatementStack; // 
+    std::stack<std::string>addrRegFreeStack;
+    std::stack<std::string>addrRegStatementStack;
+    for (auto& item : dataRegNames) {
+        dataRegFreeStack.push(item);
+    }
+    for (auto& item : addrRegNames) {
+        addrRegFreeStack.push(item);
+    }
+
+
+
     lexeme l ;
 
     if(this->lex->peekLexeme().getType() == LEXEME_TYPE_IDENT) {
@@ -170,7 +185,7 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
         if(id == NULL) {
             // Check to make sure the symbol is in our symbol table.
             char msg[100];
-            snprintf(msg, 100, "Identifier `%s' undeclared.", this->lex->peekLexeme().getText().c_str());
+            snprintf(msg, sizeof(msg), "Identifier `%s' undeclared.", this->lex->peekLexeme().getText().c_str());
             this->error(msg);
         }
 //        std::cerr << "[parser::statement] @fp" << id->getStackFramePosition() << std::endl;
@@ -180,7 +195,13 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
             std::cerr << "[parser::statement] Got lexeme type " << l.getType() << std::endl;
             this->error("Expected `=' in assignment");
         }
-        this->expression(symbolTable);
+        // Process the expression
+        this->expression(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
+
+        // Store the result on the stack at the location allocated to the identifier
+        char msg[200];
+        snprintf(msg, sizeof(msg), "MOVE %s,%d(A6)", dataRegStatementStack.top().c_str(), id->getStackFramePosition());
+        emit(msg);
     } else {
         this->error("Expected: identifier at beginning of statement");
     }
@@ -214,8 +235,44 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
  *
  *
  */
-void parser::expression(std::map<std::string, identifier*>&symbolTable) {
-    this->signedfactor(symbolTable); // Eat the identifier
+void parser::expression(std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack) {
+    // expression    -> term [(`+' | `-') term]*
+    // Process the first term
+    this->term(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack); // Eat the identifier
+
+    std::cerr << "[parser::expression] next lexeme type is " << this->lex->peekLexeme().getType() << "\n";
+
+    // Check if we have an addop after the first term.
+    while(this->lex->peekLexeme().getType() == LEXEME_TYPE_ADDOP) {
+        std::cerr << "[parser::expression] Processing another term in expression...\n";
+        lexeme sign_lexeme = this->lex->getNextLexeme(); // Get the sign (`+' or `-')
+        this->term(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack); // Eat the identifier
+
+        // Now add or subtract the terms
+        char msg[200];
+        std::string op1, op2;
+        op1 = dataRegStatementStack.top();
+        dataRegStatementStack.pop();
+        op2 = dataRegStatementStack.top();
+        dataRegStatementStack.pop();
+
+        if(sign_lexeme.getText() == "+") {
+            snprintf(msg,sizeof(msg), "ADD %s,%s", op2.c_str(), op1.c_str());
+        } else if (sign_lexeme.getText() == "-") {
+            snprintf(msg,sizeof(msg), "SUB %s,%s", op2.c_str(), op1.c_str());
+        } else {
+            snprintf(msg, sizeof(msg), "Error: expected `+' or `-' in expression. Got \"%s\"", sign_lexeme.getText().c_str());
+            error(msg);
+        }
+        emit(msg);
+        dataRegFreeStack.push(op1); // Reclaim one of the data registers
+        dataRegStatementStack.push(op2);
+
+    }
+    while(this->lex->peekLexeme().getType() != LEXEME_TYPE_SEMICOLON) {
+        lexeme l;
+        l = lex->getNextLexeme();
+    }
 }
 
 /*
@@ -224,11 +281,43 @@ void parser::expression(std::map<std::string, identifier*>&symbolTable) {
  *
  *
  */
-void parser::term(std::map<std::string, identifier*>&symbolTable) {
+void parser::term(std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack) {
 
+    //term          -> signedfactor [(`*' | `/') factor]*
+    this->signedfactor(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack); // Eat the identifier
+
+    // Handle multiple factors following the first signed factor
+    while(this->lex->peekLexeme().getType() == LEXEME_TYPE_MULOP) {
+        std::cerr << "[parser::term] Processing another factor in term...\n";
+
+        lexeme mulop_lexeme = this->lex->getNextLexeme(); // Get the operation (`*' or `/')
+        this->factor(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack); // Process the factor
+
+        // Now multiply or divide the terms
+        char msg[200];
+        std::string op1, op2;
+        op1 = dataRegStatementStack.top();
+        dataRegStatementStack.pop();
+        op2 = dataRegStatementStack.top();
+        dataRegStatementStack.pop();
+
+        if(mulop_lexeme.getText() == "*") {
+            snprintf(msg,sizeof(msg), "MULS %s,%s", op2.c_str(), op1.c_str());
+        } else if (mulop_lexeme.getText() == "/") {
+            snprintf(msg,sizeof(msg), "DIVS %s,%s", op2.c_str(), op1.c_str());
+        } else {
+            snprintf(msg, sizeof(msg), "Error: expected `*' or `/' in term. Got \"%s\"", mulop_lexeme.getText().c_str());
+            error(msg);
+        }
+        emit(msg);
+        dataRegFreeStack.push(op1); // Reclaim one of the data registers
+        dataRegStatementStack.push(op2);
+
+
+    }
 }
 
-void parser::signedfactor(std::map<std::string, identifier*>&symbolTable) {
+void parser::signedfactor(std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack) {
     lexeme l, sign;
     //lexeme sf = this->lex->getNextLexeme(); // Eat the sign
 
@@ -241,16 +330,69 @@ void parser::signedfactor(std::map<std::string, identifier*>&symbolTable) {
         sign.setText("+");
     }
 
+    
+    this->factor(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
+    
+    if(sign.getText() == "-") {
+        // If the factor has a `-' sign in front of it, negate the value.
+        std::string regname =  dataRegStatementStack.top();
+        char buf[200];
+        snprintf(buf, sizeof(buf), "NEG %s", regname.c_str());
+        emit(buf);
+
+    }
+}
+
+
+void parser::factor(std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack) {
+
+    // factor        -> constant | identifier | `(' expression `)'
+
+    lexeme l;
+    identifier *id;
+    std::string dreg; // Data register name used to process this factor
+    char msg[200];
+
+    l = this->lex->getNextLexeme(); // Get the next lexeme. Should be a constant, identifier, or open parentheses
+    switch(l.getType()) {
+    case LEXEME_TYPE_INTEGER:
+        //std::cerr << "[parser::factor] Found integer constant. ";
+        dreg = dataRegFreeStack.top();
+        dataRegFreeStack.pop();
+        dataRegStatementStack.push(dreg);
+        //std::cerr << "allocating register " << dreg << "\n";
+        snprintf(msg, sizeof(msg), "MOVE.L #%d,%s", l.getValue(), dreg.c_str());
+        emit(msg);
+
+        break;
+    case LEXEME_TYPE_IDENT:
+        std::cerr << "[parser::factor] Found identifier\n";
+
+        id = symbolTable[l.getText()];
+        if(id == NULL) {
+            // Check to make sure the symbol is in our symbol table.
+            char msg[100];
+            snprintf(msg, sizeof(msg), "Identifier `%s' undeclared.", this->lex->peekLexeme().getText().c_str());
+            this->error(msg);
+        }
+        dreg = dataRegFreeStack.top();
+        dataRegFreeStack.pop();
+        dataRegStatementStack.push(dreg);
+        std::cerr << "allocating register " << dreg << "\n";
+        snprintf(msg, sizeof(msg), "MOVE.L %d(A6),%s", id->getStackFramePosition(), dreg.c_str());
+        emit(msg);
+        break;
+    default:
+        snprintf(msg, sizeof(msg), "Error processing factor. Expected integer constant or identifier. Got `%s'", l.getText().c_str());
+        error(msg);
+        break;
+    }
     // Eat up all the lexemes in the statement...
+#if 0
     while(this->lex->peekLexeme().getType() != LEXEME_TYPE_SEMICOLON) {
 //        std::cout << "[signedfactor] peekLexeme.getType() = " << this->lex->peekLexeme().getType() << std::endl;
         l = lex->getNextLexeme();
     }
-
-
-}
-
-
-void parser::factor(std::map<std::string, identifier*>&symbolTable) {
+#endif
 
 }
