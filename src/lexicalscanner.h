@@ -5,8 +5,8 @@
 #include <iostream>     // std::cin, std::cout
 #include <fstream>      // std::ifstream
 
-#ifndef __LEXICALPARSER_H__
-#define __LEXICALPARSER_H__
+#ifndef __LEXICALSCANNER_H__
+#define __LEXICALSCANNER_H__
 
 class lexicalScanner {
 private:

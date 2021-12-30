@@ -10,9 +10,9 @@
 
 
 static std::map<std::string, int> keyword_map = {
-{"if", KEYWORD_IF},
-{"int", KEYWORD_INT},
-{"while", KEYWORD_WHILE},
+{"if", KEYWORD_TYPE_IF},
+{"int", KEYWORD_TYPE_INT},
+{"while", KEYWORD_TYPE_WHILE},
 };
 
 void lexicalScanner::Expected(std::string err) {
@@ -156,13 +156,15 @@ lexeme lexicalScanner::getNextLexeme() {
         auto search = keyword_map.find(this->currLexeme.getText()); // Look up the string in the keyword list
         if (search != keyword_map.end()) {
             // Got keyword
-            //std::cout << "[getNextLexeme] got keyword \"" << this->currLexeme.getText() << "\"\n";
-            //std::cout << "[getNextLexeme] Found " << search->first << " : " << search->second << std::endl;
+//            std::cerr << "[getNextLexeme] got keyword \"" << this->currLexeme.getText() << "\"\n";
+//            std::cerr << "[getNextLexeme] Found " << search->first << " : " << search->second << std::endl;
             currLexeme.setType(LEXEME_TYPE_KEYWORD);     // Set the lexeme type to keyword
+//            std::cerr << "[getNextLexeme] Setting lexeme type to " << currLexeme.getType() << std::endl;
             this->currLexeme.setSubtype(search->second); // Set the type of keyword (IF, WHILE, etc.)
+//            std::cerr << "[getNextLexeme] Setting lexeme subtype to " << currLexeme.getSubtype() << std::endl;
         } else {
             // Got identifier
-            //std::cout << "[getNextLexeme] got identifier \"" << this->currLexeme.getText() << "\"\n";
+//            std::cerr << "[getNextLexeme] got identifier \"" << this->currLexeme.getText() << "\"\n";
             currLexeme.setType(LEXEME_TYPE_IDENT);
         }
         // Look up the lexeme

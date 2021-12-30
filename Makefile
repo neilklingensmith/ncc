@@ -16,6 +16,7 @@ OBJS +=  \
 	lexicalscanner.o \
 	lexeme.o \
     parser.o \
+    identifier.o \
 
 
 OBJ = $(patsubst %,$(ODIR)/%,$(OBJS))

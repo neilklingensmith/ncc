@@ -21,7 +21,7 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    parser p(argv[1]);
+    parser p(argv[1], NULL);
 
     p.block();
 #if 0
