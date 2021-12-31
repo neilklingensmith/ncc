@@ -21,6 +21,22 @@ void parser::error(const char *msg) {
     exit(1);
 }
 
+void parser::function() {
+    char buf[200];
+
+    lexeme returntype =  lex->getNextLexeme(); // Get the function's return type
+    lexeme funcname = lex->getNextLexeme(); // Get function name
+
+    std::cerr << "Got function named " << funcname.getText() << "\n";
+    snprintf(buf, sizeof(buf), "%s:", funcname.getText().c_str());
+    emit(buf);
+
+    lexeme parens = lex->getNextLexeme(); // Get open paren
+    parens = lex->getNextLexeme(); // Get close paren
+    block();
+}
+
+
 /*
  * block
  *
@@ -66,7 +82,7 @@ void parser::block() {
     std::string linkinstr("LINK A6,#");
     linkinstr.append(std::to_string(-totalBytesInStackFrame));
     emit(linkinstr);
-    emit((char*)"MOVEM.L D0-D7/A0-A5,-(A7)");
+    emit((char*)"MOVEM.L D1-D7/A0-A5,-(A7)");
     // Done iterating thru declarations
     /////////////////////////////////////////
 
@@ -76,8 +92,9 @@ void parser::block() {
         this->statement(symbolTable); // Process statement
     }
 
-    emit((char*)"MOVEM.L (A7)+,D0-D7/A0-A5");
+    emit((char*)"MOVEM.L (A7)+,D1-D7/A0-A5");
     emit((char*)"UNLK A6");
+    emit((char*)"RTS");
     // Expected: close brace
     l = lex->getNextLexeme();
     if(l.getType() != LEXEME_TYPE_CLOSEBRACE) {
@@ -208,26 +225,21 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
         char msg[200];
         snprintf(msg, sizeof(msg), "MOVE %s,%d(A6)", dataRegStatementStack.top().c_str(), id->getStackFramePosition());
         emit(msg);
+    } else if ((this->lex->peekLexeme().getType() == LEXEME_TYPE_KEYWORD) && (this->lex->peekLexeme().getSubtype() == KEYWORD_TYPE_RETURN)) {
+        // Handle return statements
+        char msg[200];
+        lexeme keywordlexeme = this->lex->getNextLexeme(); // Eat the return keyword
+        lexeme returnlexeme = this->lex->getNextLexeme(); // Eat the thing to return
+        if(returnlexeme.getType() == LEXEME_TYPE_INTEGER) { // constant return value
+            snprintf(msg, sizeof(msg), "MOVE %d,D0", returnlexeme.getValue());
+        } else if (returnlexeme.getType() == LEXEME_TYPE_IDENT) { // identifier's value returned
+            identifier *id = symbolTable[returnlexeme.getText()];
+            snprintf(msg, sizeof(msg), "MOVE %d(A6),D0", id->getStackFramePosition());
+        }
+        emit(msg);
     } else {
         this->error("Expected: identifier at beginning of statement");
     }
-#if 0
-    else if (this->lex->peekLexeme().getType() == LEXEME_TYPE_INTEGER) {
-        std::cerr << "[parser::statement] found integer " << this->lex->peekLexeme().getValue() << std::endl;
-        // Eat up all the lexemes in the statement...
-        while(this->lex->peekLexeme().getType() != LEXEME_TYPE_SEMICOLON) {
-            std::cout << "[statement] peekLexeme.getType() = " << this->lex->peekLexeme().getType() << std::endl;
-            l = lex->getNextLexeme();
-        }
-    } else {
-        // Processing assignments
-        // Eat up all the lexemes in the statement...
-        while(this->lex->peekLexeme().getType() != LEXEME_TYPE_SEMICOLON) {
-            std::cout << "[statement] peekLexeme.getType() = " << this->lex->peekLexeme().getType() << std::endl;
-            l = lex->getNextLexeme();
-        }
-    }
-#endif
     // Eat the semicolong lexeme...
     if(this->lex->peekLexeme().getType() == LEXEME_TYPE_SEMICOLON) {
         l = lex->getNextLexeme();

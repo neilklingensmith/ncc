@@ -13,6 +13,7 @@ static std::map<std::string, int> keyword_map = {
 {"if", KEYWORD_TYPE_IF},
 {"int", KEYWORD_TYPE_INT},
 {"while", KEYWORD_TYPE_WHILE},
+{"return", KEYWORD_TYPE_RETURN},
 };
 
 void lexicalScanner::Expected(std::string err) {

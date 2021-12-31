@@ -27,6 +27,7 @@
 #define KEYWORD_TYPE_IF           0x101
 #define KEYWORD_TYPE_INT          0x102
 #define KEYWORD_TYPE_WHILE        0x103
+#define KEYWORD_TYPE_RETURN       0x103
 
 class lexeme {
 
