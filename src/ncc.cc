@@ -7,7 +7,7 @@
 
 
 lexicalScanner *lex;
-
+unsigned int debuglevel = 2;
 
 void usage(char *progname) {
     std::cerr << "Usage: " << progname << " <file name>";

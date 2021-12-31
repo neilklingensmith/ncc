@@ -3,6 +3,9 @@
 
 #include "parser.h"
 #include <map>
+#include <cstring>
+
+extern unsigned int debuglevel;
 
 parser::parser(char *ifname, char *ofname) {
     input_file_name = new std::string(ifname);
@@ -35,24 +38,34 @@ void parser::function() {
     // Read function arguments
     lexeme arglex = lex->getNextLexeme(); // Get open paren
     do {
-//        arglex = lex->getNextLexeme();
         if(this->lex->peekLexeme().getType() == LEXEME_TYPE_PARENTHESES) {
             break;
         }
 
-        std::string newident = declaration(symbolTable,LEXEME_TYPE_COMMA);
+        std::string newident = declaration(symbolTable, LEXEME_TYPE_COMMA | LEXEME_TYPE_PARENTHESES);
         symbolTable[newident]->setStackFramePosition(stack_frame_pos);
         stack_frame_pos += symbolTable[newident]->getNumBytes();
-/*
-        // didn't get parentheses...look for [type identifier,]
-        if((arglex.getType() != LEXEME_TYPE_KEYWORD) && (arglex.getSubtype() != KEYWORD_TYPE_INT)) {
-            snprintf(buf,sizeof(buf), "Error: expected variable type in function definition. Got `%s'", arglex.getText().c_str());
-            error(buf);
+
+        if(debuglevel > 1) {
+            // If the user has enabled debugging, we will print the variables locations on the stack frame
+            char spaces[50];
+            unsigned int k;
+            memset(spaces, 0, sizeof(spaces));
+
+            for(k = 0; k < 30-strlen(newident.c_str()); k++) {
+                strcat(spaces, " ");
+            }
+            snprintf(buf, sizeof(buf), "@ | %s%s |  FP + %d", newident.c_str(), spaces, symbolTable[newident]->getStackFramePosition());
+            emit((char*)"@ |--------------------------------|");
+            emit (buf);
+
         }
 
-        arglex = lex->getNextLexeme(); // Read variable name
-*/
-    } while(arglex.getType() != LEXEME_TYPE_PARENTHESES);
+
+        arglex = lex->peekLexeme(); // Read the next lexeme to decide if we need to break out of the loop
+
+    // parser::declaration will eat the close parentheses `)' at the end of the function arg list. We are looking for an open brace to terminate this loop
+    } while(arglex.getType() != LEXEME_TYPE_OPENBRACE);
     block(symbolTable);
 }
 
@@ -67,6 +80,7 @@ void parser::function() {
  */
 void parser::block(std::map<std::string, identifier*>&symbolTable) {
     int totalBytesInStackFrame = 0;
+    char buf[200];
 //    std::map<std::string,identifier*> symbolTable;
 
     lexeme l = lex->peekLexeme();
@@ -79,14 +93,35 @@ void parser::block(std::map<std::string, identifier*>&symbolTable) {
     // Eat the open brace
     l = lex->getNextLexeme();
 
+    if(debuglevel > 1) {
+        emit((char*)"@ |--------------------------------|");
+        emit((char*)"@ | FP                             | <-- A6");
+    }
     // Process declarations
     while((this->lex->peekLexeme().getType() == LEXEME_TYPE_KEYWORD) && (this->lex->peekLexeme().getSubtype() == KEYWORD_TYPE_INT)) {
         // Found a declaration
         std::string newident = this->declaration(symbolTable, LEXEME_TYPE_SEMICOLON);
         totalBytesInStackFrame += symbolTable[newident]->getNumBytes();
         symbolTable[newident]->setStackFramePosition(-totalBytesInStackFrame);
+
+        if(debuglevel > 1) {
+            // If the user has enabled debugging, we will print the variables locations on the stack frame
+            char spaces[50];
+            unsigned int k;
+            memset(spaces, 0, sizeof(spaces));
+
+            for(k = 0; k < 30-strlen(newident.c_str()); k++) {
+                strcat(spaces, " ");
+            }
+            snprintf(buf, sizeof(buf), "@ | %s%s |  FP - %d", newident.c_str(), spaces, -symbolTable[newident]->getStackFramePosition());
+            emit((char*)"@ |--------------------------------|");
+            emit (buf);
+        }
     }
 
+    if(debuglevel > 1) {
+        emit((char*)"@ |--------------------------------|");
+    }
     //////////////////////////////////////////
     // Iterate thru the declarations. Count the total size of the stack frame to be created, and mark the location of each identifier on the stack.
 #if 0
@@ -177,15 +212,15 @@ std::string parser::declaration(std::map<std::string, identifier*>&symbolTable, 
 
     // Eat the semicolon lexeme
     // TODO: error-check the terminator
-//    if(this->lex->peekLexeme().getType() == declaration_terminator) {
-//        std::cerr << "[parser::declaration] Got semicolon \"" << this->lex->peekLexeme().getText() << "\" type = "<< this->lex->peekLexeme().getType() << std::endl;
+    if(this->lex->peekLexeme().getType() & declaration_terminator) {
+        std::cerr << "[parser::declaration] Got semicolon \"" << this->lex->peekLexeme().getText() << "\" type = "<< this->lex->peekLexeme().getType() << std::endl;
         l = lex->getNextLexeme();
-//    } else {
-//        std::cerr << "[parser::declaration] DIDN'T GET SEMICOLON!! GOT " << this->lex->peekLexeme().getType() << " INSTEAD!!" << std::endl;
-//        char msg[200];
-//        snprintf(msg, 200, "Expected semicolon at end of declaration. Got `%s' instead.", this->lex->peekLexeme().getText().c_str());
-//        error(msg);
-//    }
+    } else {
+        std::cerr << "[parser::declaration] DIDN'T GET SEMICOLON!! GOT " << this->lex->peekLexeme().getType() << " INSTEAD!!" << std::endl;
+        char msg[200];
+        snprintf(msg, 200, "Expected semicolon at end of declaration. Got `%s' instead.", this->lex->peekLexeme().getText().c_str());
+        error(msg);
+    }
     return identifiername.getText();
 }
 /*
