@@ -18,6 +18,7 @@
 #define LEXEME_TYPE_PARENTHESES     0x008
 #define LEXEME_TYPE_OPENBRACE       0x009
 #define LEXEME_TYPE_CLOSEBRACE      0x00A
+#define LEXEME_TYPE_COMMA           0x00B
 
 
 /////////////////////////////////////////////////////

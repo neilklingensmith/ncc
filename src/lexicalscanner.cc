@@ -228,6 +228,10 @@ lexeme lexicalScanner::getNextLexeme() {
         getChar();
         skipWhite();
         currLexeme.setType(LEXEME_TYPE_CLOSEBRACE);
+    } else if (look == ',') {
+        getChar();
+        skipWhite();
+        currLexeme.setType(LEXEME_TYPE_COMMA);
     } else {
         //std::cout << "[getNextLexeme] Got unknown " << look << "\n";
         exit(0);

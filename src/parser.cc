@@ -23,17 +23,37 @@ void parser::error(const char *msg) {
 
 void parser::function() {
     char buf[200];
+    unsigned int stack_frame_pos = 4; // first variable on the stack frame will start right above the frame pointer at A6+4
+    std::map<std::string, identifier*> symbolTable;
 
     lexeme returntype =  lex->getNextLexeme(); // Get the function's return type
     lexeme funcname = lex->getNextLexeme(); // Get function name
 
-    std::cerr << "Got function named " << funcname.getText() << "\n";
     snprintf(buf, sizeof(buf), "%s:", funcname.getText().c_str());
     emit(buf);
 
-    lexeme parens = lex->getNextLexeme(); // Get open paren
-    parens = lex->getNextLexeme(); // Get close paren
-    block();
+    // Read function arguments
+    lexeme arglex = lex->getNextLexeme(); // Get open paren
+    do {
+//        arglex = lex->getNextLexeme();
+        if(this->lex->peekLexeme().getType() == LEXEME_TYPE_PARENTHESES) {
+            break;
+        }
+
+        std::string newident = declaration(symbolTable,LEXEME_TYPE_COMMA);
+        symbolTable[newident]->setStackFramePosition(stack_frame_pos);
+        stack_frame_pos += symbolTable[newident]->getNumBytes();
+/*
+        // didn't get parentheses...look for [type identifier,]
+        if((arglex.getType() != LEXEME_TYPE_KEYWORD) && (arglex.getSubtype() != KEYWORD_TYPE_INT)) {
+            snprintf(buf,sizeof(buf), "Error: expected variable type in function definition. Got `%s'", arglex.getText().c_str());
+            error(buf);
+        }
+
+        arglex = lex->getNextLexeme(); // Read variable name
+*/
+    } while(arglex.getType() != LEXEME_TYPE_PARENTHESES);
+    block(symbolTable);
 }
 
 
@@ -45,9 +65,9 @@ void parser::function() {
  *
  *
  */
-void parser::block() {
+void parser::block(std::map<std::string, identifier*>&symbolTable) {
     int totalBytesInStackFrame = 0;
-    std::map<std::string,identifier*> symbolTable;
+//    std::map<std::string,identifier*> symbolTable;
 
     lexeme l = lex->peekLexeme();
 
@@ -62,11 +82,14 @@ void parser::block() {
     // Process declarations
     while((this->lex->peekLexeme().getType() == LEXEME_TYPE_KEYWORD) && (this->lex->peekLexeme().getSubtype() == KEYWORD_TYPE_INT)) {
         // Found a declaration
-        this->declaration(symbolTable);
+        std::string newident = this->declaration(symbolTable, LEXEME_TYPE_SEMICOLON);
+        totalBytesInStackFrame += symbolTable[newident]->getNumBytes();
+        symbolTable[newident]->setStackFramePosition(-totalBytesInStackFrame);
     }
 
     //////////////////////////////////////////
     // Iterate thru the declarations. Count the total size of the stack frame to be created, and mark the location of each identifier on the stack.
+#if 0
     std::map<std::string, identifier*>::iterator it;
 
     for (auto const& [key, val] : symbolTable) {
@@ -78,7 +101,7 @@ void parser::block() {
               << " Stack Frame loc " << val->getStackFramePosition()
               << std::endl;
     }
-
+#endif
     std::string linkinstr("LINK A6,#");
     linkinstr.append(std::to_string(-totalBytesInStackFrame));
     emit(linkinstr);
@@ -123,7 +146,7 @@ void parser::emit(std::string &s) {
  *
  *   symbolTable is the block's symbol table.
  */
-void parser::declaration(std::map<std::string, identifier*>&symbolTable) {
+std::string parser::declaration(std::map<std::string, identifier*>&symbolTable, int declaration_terminator) {
 
     lexeme l ;
     identifier *id = new identifier;
@@ -153,16 +176,17 @@ void parser::declaration(std::map<std::string, identifier*>&symbolTable) {
     symbolTable.insert(std::pair<std::string,identifier*>(identifiername.getText(),id) );
 
     // Eat the semicolon lexeme
-    if(this->lex->peekLexeme().getType() == LEXEME_TYPE_SEMICOLON) {
+    // TODO: error-check the terminator
+//    if(this->lex->peekLexeme().getType() == declaration_terminator) {
 //        std::cerr << "[parser::declaration] Got semicolon \"" << this->lex->peekLexeme().getText() << "\" type = "<< this->lex->peekLexeme().getType() << std::endl;
         l = lex->getNextLexeme();
-    } else {
+//    } else {
 //        std::cerr << "[parser::declaration] DIDN'T GET SEMICOLON!! GOT " << this->lex->peekLexeme().getType() << " INSTEAD!!" << std::endl;
-        char msg[200];
-        snprintf(msg, 200, "Expected semicolon at end of declaration. Got `%s' instead.", this->lex->peekLexeme().getText().c_str());
-        error(msg);
-    }
-
+//        char msg[200];
+//        snprintf(msg, 200, "Expected semicolon at end of declaration. Got `%s' instead.", this->lex->peekLexeme().getText().c_str());
+//        error(msg);
+//    }
+    return identifiername.getText();
 }
 /*
  * statement
