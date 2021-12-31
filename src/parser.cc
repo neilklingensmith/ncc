@@ -179,8 +179,14 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
 
     lexeme l ;
 
+    // This if block deals with statements of the form:
+    //
+    //      ident = expr;
+    //
+    // The first bit processes the identifier by finding it in the symbol table.
     if(this->lex->peekLexeme().getType() == LEXEME_TYPE_IDENT) {
 //        std::cerr << "[parser::statement] found identifier \"" << this->lex->peekLexeme().getText() << "\"" << std::endl;
+        // Look up the identifier in the symbol table for this block.
         identifier *id = symbolTable[this->lex->peekLexeme().getText()];
         if(id == NULL) {
             // Check to make sure the symbol is in our symbol table.
@@ -269,10 +275,12 @@ void parser::expression(std::map<std::string, identifier*>&symbolTable, std::sta
         dataRegStatementStack.push(op2);
 
     }
+/*
     while(this->lex->peekLexeme().getType() != LEXEME_TYPE_SEMICOLON) {
         lexeme l;
         l = lex->getNextLexeme();
     }
+*/
 }
 
 /*
@@ -371,7 +379,6 @@ void parser::factor(std::map<std::string, identifier*>&symbolTable, std::stack<s
         id = symbolTable[l.getText()];
         if(id == NULL) {
             // Check to make sure the symbol is in our symbol table.
-            char msg[100];
             snprintf(msg, sizeof(msg), "Identifier `%s' undeclared.", this->lex->peekLexeme().getText().c_str());
             this->error(msg);
         }
@@ -381,6 +388,21 @@ void parser::factor(std::map<std::string, identifier*>&symbolTable, std::stack<s
         std::cerr << "allocating register " << dreg << "\n";
         snprintf(msg, sizeof(msg), "MOVE.L %d(A6),%s", id->getStackFramePosition(), dreg.c_str());
         emit(msg);
+        break;
+    case LEXEME_TYPE_PARENTHESES:
+        // First, ensure that we got an open paren, not a closed.
+        if(l.getText() != "(") {
+            snprintf(msg, sizeof(msg), "Error: Expected `(' before `%s'", this->lex->peekLexeme().getText().c_str());
+            this->error(msg);
+        }
+        // Process the expression
+        this->expression(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
+        if(this->lex->peekLexeme().getText() != ")") {
+            snprintf(msg, sizeof(msg), "Error: Expected `)' at the end of the expression. Got `%s' instead.", this->lex->peekLexeme().getText().c_str());
+            this->error(msg);
+        } else {
+            l = this->lex->getNextLexeme(); // Eat the close paren
+        }
         break;
     default:
         snprintf(msg, sizeof(msg), "Error processing factor. Expected integer constant or identifier. Got `%s'", l.getText().c_str());
