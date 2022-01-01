@@ -295,17 +295,17 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
         snprintf(msg, sizeof(msg), "    MOVE %s,%d(A6)", dataRegStatementStack.top().c_str(), id->getStackFramePosition());
         emit(msg);
     } else if ((this->lex->peekLexeme().getType() == LEXEME_TYPE_KEYWORD) && (this->lex->peekLexeme().getSubtype() == KEYWORD_TYPE_RETURN)) {
-        // Handle return statements
+        // Handle return statements -- first, process the expression in the
+        // return statement. The result of the expression will be stored on the
+        // top of dataRegStatementStack. We will put this value into D0
         char msg[200];
         lexeme keywordlexeme = this->lex->getNextLexeme(); // Eat the return keyword
-        lexeme returnlexeme = this->lex->getNextLexeme(); // Eat the thing to return
-        if(returnlexeme.getType() == LEXEME_TYPE_INTEGER) { // constant return value
-            snprintf(msg, sizeof(msg), "    MOVE %d,D0", returnlexeme.getValue());
-        } else if (returnlexeme.getType() == LEXEME_TYPE_IDENT) { // identifier's value returned
-            identifier *id = symbolTable[returnlexeme.getText()];
-            snprintf(msg, sizeof(msg), "    MOVE %d(A6),D0", id->getStackFramePosition());
-        }
+        this->expression(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
+
+        // Get the result of the expression into D0
+        snprintf(msg, sizeof(msg), "    MOVE %s,D0", dataRegStatementStack.top().c_str());
         emit(msg);
+        dataRegStatementStack.pop(); // Remove the result of the expression from the DataRegStatementStack
     } else {
         this->error("Expected: identifier at beginning of statement");
     }
@@ -317,9 +317,9 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
 }
 
 /*
+ * expression
  *
- *
- *
+ * Handles expressions. The result of the expression is stored in dataRegStatementStack.top().
  *
  */
 void parser::expression(std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack) {
@@ -353,7 +353,7 @@ void parser::expression(std::map<std::string, identifier*>&symbolTable, std::sta
         }
         emit(msg);
         dataRegFreeStack.push(op1); // Reclaim one of the data registers
-        dataRegStatementStack.push(op2);
+        dataRegStatementStack.push(op2); // Put the result register on the statement stack
 
     }
 /*

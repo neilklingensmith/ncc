@@ -12,7 +12,7 @@ Grammar
     block         -> `{' [declaration]* [statement]* `}'
     declaration   -> (int | short | char) identifier ;
     statement     -> identifier `=' expression
-                   | return identifier;   
+                   | return expression;   
     expression    -> term [(`+' | `-') term]*
     term          -> signedfactor [(`*' | `/') factor]*
     signedfactor  -> [(`+' | `-')] factor
