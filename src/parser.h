@@ -10,7 +10,7 @@
 #include <map>
 #include <stack>
 
-
+#define COMMENT_STRING ";"
 
 class parser {
 private:
