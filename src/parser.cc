@@ -263,47 +263,60 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
 
 
 
-    lexeme l ;
+    lexeme l = lex->getNextLexeme();
 
     // This if block deals with statements of the form:
     //
     //      ident = expr;
     //
     // The first bit processes the identifier by finding it in the symbol table.
-    if(this->lex->peekLexeme().getType() == LEXEME_TYPE_IDENT) {
+    if(l.getType() == LEXEME_TYPE_IDENT) {
 //        std::cerr << "[parser::statement] found identifier \"" << this->lex->peekLexeme().getText() << "\"" << std::endl;
         // Look up the identifier in the symbol table for this block.
-        identifier *id = symbolTable[this->lex->peekLexeme().getText()];
-        if(id == NULL) {
-            // Check to make sure the symbol is in our symbol table.
-            char msg[100];
-            snprintf(msg, sizeof(msg), "Identifier `%s' undeclared.", this->lex->peekLexeme().getText().c_str());
-            this->error(msg);
-        }
-//        std::cerr << "[parser::statement] @fp" << id->getStackFramePosition() << std::endl;
-        lexeme idlexeme = this->lex->getNextLexeme(); // Eat the identifier
-        l = this->lex->getNextLexeme(); // Eat the `='
-        if(l.getType() != LEXEME_TYPE_ASSIGNMENTOP) {
-            std::cerr << "[parser::statement] Got lexeme type " << l.getType() << std::endl;
-            this->error("Expected `=' in assignment");
-        }
-        // Process the expression
-        this->expression(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
+        if( (this->lex->peekLexeme().getType() == LEXEME_TYPE_PARENTHESES) && (this->lex->peekLexeme().getText() == "(")) {
+            std::string funcname = l.getText().c_str();
+            lexeme paren = this->lex->getNextLexeme(); // Eat the open paren
+            paren = this->lex->getNextLexeme(); // Eat the close paren
+            paren = this->lex->getNextLexeme(); // Eat the semicolon paren
 
-        // Store the result on the stack at the location allocated to the identifier
-        char msg[200];
-        snprintf(msg, sizeof(msg), "    MOVE %s,%d(A6)", dataRegStatementStack.top().c_str(), id->getStackFramePosition());
-        emit(msg);
-    } else if ((this->lex->peekLexeme().getType() == LEXEME_TYPE_KEYWORD) && (this->lex->peekLexeme().getSubtype() == KEYWORD_TYPE_RETURN)) {
+            // TODO: Process function args...
+            std::cerr << "FOUND FUNCTION CALL!!!\n";
+            char msg[200];
+            snprintf(msg, sizeof(msg), "    BSR %s", l.getText().c_str());
+            emit(msg);
+        } else {
+            identifier *id = symbolTable[l.getText()];
+            if(id == NULL) {
+                // Check to make sure the symbol is in our symbol table.
+                char msg[100];
+                snprintf(msg, sizeof(msg), "Identifier `%s' undeclared.", l.getText().c_str());
+                this->error(msg);
+            }
+    //        std::cerr << "[parser::statement] @fp" << id->getStackFramePosition() << std::endl;
+            lexeme idlexeme = l; // Save the identifier lexeme
+            l = this->lex->getNextLexeme(); // Eat the `='
+            if(l.getType() != LEXEME_TYPE_ASSIGNMENTOP) {
+                std::cerr << "[parser::statement] Got lexeme type " << l.getType() << std::endl;
+                this->error("Expected `=' in assignment");
+            }
+            // Process the expression
+            this->expression(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
+
+            // Store the result on the stack at the location allocated to the identifier
+            char msg[200];
+            snprintf(msg, sizeof(msg), "    MOVE.L %s,%d(A6)", dataRegStatementStack.top().c_str(), id->getStackFramePosition());
+            emit(msg);
+        }
+    } else if ((l.getType() == LEXEME_TYPE_KEYWORD) && (l.getSubtype() == KEYWORD_TYPE_RETURN)) {
         // Handle return statements -- first, process the expression in the
         // return statement. The result of the expression will be stored on the
         // top of dataRegStatementStack. We will put this value into D0
         char msg[200];
-        lexeme keywordlexeme = this->lex->getNextLexeme(); // Eat the return keyword
+        lexeme keywordlexeme = l; // Eat the return keyword
         this->expression(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
 
         // Get the result of the expression into D0
-        snprintf(msg, sizeof(msg), "    MOVE %s,D0", dataRegStatementStack.top().c_str());
+        snprintf(msg, sizeof(msg), "    MOVE.L %s,D0", dataRegStatementStack.top().c_str());
         emit(msg);
         dataRegStatementStack.pop(); // Remove the result of the expression from the DataRegStatementStack
     } else {
@@ -426,7 +439,7 @@ void parser::signedfactor(std::map<std::string, identifier*>&symbolTable, std::s
         // If the factor has a `-' sign in front of it, negate the value.
         std::string regname =  dataRegStatementStack.top();
         char buf[200];
-        snprintf(buf, sizeof(buf), "    NEG %s", regname.c_str());
+        snprintf(buf, sizeof(buf), "    NEG.L %s", regname.c_str());
         emit(buf);
 
     }
@@ -457,18 +470,55 @@ void parser::factor(std::map<std::string, identifier*>&symbolTable, std::stack<s
     case LEXEME_TYPE_IDENT:
 //        std::cerr << "[parser::factor] Found identifier\n";
 
-        id = symbolTable[l.getText()];
-        if(id == NULL) {
-            // Check to make sure the symbol is in our symbol table.
-            snprintf(msg, sizeof(msg), "Identifier `%s' undeclared.", this->lex->peekLexeme().getText().c_str());
-            this->error(msg);
+        if((this->lex->peekLexeme().getType() == LEXEME_TYPE_PARENTHESES) && (this->lex->peekLexeme().getText() == "(")) {
+            
+            std::string retvaldreg, stashdreg; // Data register name used to process this factor
+            std::cerr << "FOUND FUNCTION CALL IN FACTOR!!!\n";
+            lexeme paren = this->lex->getNextLexeme(); // Eat the open paren
+            paren = this->lex->getNextLexeme(); // Eat the close paren
+//            paren = this->lex->getNextLexeme(); // Eat the semicolon paren
+
+            // Allocate a register for the return value. This is where this factor's output will be stored
+            retvaldreg = dataRegFreeStack.top();
+            dataRegFreeStack.pop();
+            dataRegStatementStack.push(retvaldreg);
+
+            // Stash the value in D0 temporarily in a different data reg so the return value doesn't overwrite it.
+            stashdreg = dataRegFreeStack.top();
+            dataRegFreeStack.pop();
+    //        std::cerr << "allocating register " << dreg << "\n";
+            if(retvaldreg != "D0") {
+                snprintf(msg, sizeof(msg), "    MOVE.L D0,%s", stashdreg.c_str());
+                emit(msg);
+            }
+
+            // TODO: Process function args...
+            char msg[200];
+            snprintf(msg, sizeof(msg), "    BSR %s", l.getText().c_str());
+            emit(msg);
+
+            snprintf(msg, sizeof(msg), "    MOVE.L D0,%s", retvaldreg.c_str());
+            emit(msg);
+            dataRegFreeStack.push(stashdreg);
+            if(retvaldreg != "D0") {
+                snprintf(msg, sizeof(msg), "    MOVE.L %s,D0", stashdreg.c_str());
+                emit(msg);
+            }
+            dataRegFreeStack.push(stashdreg);
+        } else {
+            id = symbolTable[l.getText()];
+            if(id == NULL) {
+                // Check to make sure the symbol is in our symbol table.
+                snprintf(msg, sizeof(msg), "Identifier `%s' undeclared.", this->lex->peekLexeme().getText().c_str());
+                this->error(msg);
+            }
+            dreg = dataRegFreeStack.top();
+            dataRegFreeStack.pop();
+            dataRegStatementStack.push(dreg);
+    //        std::cerr << "allocating register " << dreg << "\n";
+            snprintf(msg, sizeof(msg), "    MOVE.L %d(A6),%s", id->getStackFramePosition(), dreg.c_str());
+            emit(msg);
         }
-        dreg = dataRegFreeStack.top();
-        dataRegFreeStack.pop();
-        dataRegStatementStack.push(dreg);
-//        std::cerr << "allocating register " << dreg << "\n";
-        snprintf(msg, sizeof(msg), "    MOVE.L %d(A6),%s", id->getStackFramePosition(), dreg.c_str());
-        emit(msg);
         break;
     case LEXEME_TYPE_PARENTHESES:
         // First, ensure that we got an open paren, not a closed.

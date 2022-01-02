@@ -23,7 +23,9 @@ int main(int argc, char **argv) {
 
     parser p(argv[1], NULL);
 
-    p.function();
+    while(1) {
+        p.function();
+    }
 #if 0
     // Parse command line parameters
     if(argc == 1) {

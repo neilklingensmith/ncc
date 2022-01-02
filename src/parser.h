@@ -16,10 +16,10 @@ class parser {
 private:
     std::string *input_file_name;
     std::ostream *os;
-    lexicalScanner *lex;
     std::string file_name;
 
 public:
+    lexicalScanner *lex;
     parser(char *ifname, char *ofname);
     void emit(std::string&);
     void emit(char*);

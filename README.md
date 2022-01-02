@@ -12,11 +12,12 @@ Grammar
     block         -> `{' [declaration]* [statement]* `}'
     declaration   -> (int | short | char) identifier ;
     statement     -> identifier `=' expression
-                   | return expression;   
+                   | return expression;
     expression    -> term [(`+' | `-') term]*
     term          -> signedfactor [(`*' | `/') factor]*
     signedfactor  -> [(`+' | `-')] factor
     factor        -> constant | identifier | `(' expression `)'
+                   | funcname ( [identifier ,]* ) ;
 
 
 
