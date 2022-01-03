@@ -22,7 +22,7 @@ private:
 public:
     lexicalScanner *lex;
     parser(char *ifname, char *ofname);
-    void emit(std::string&);
+    void emit(std::string);
     void emit(char*);
     void error(const char *msg);
     void function();

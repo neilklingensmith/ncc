@@ -13,7 +13,6 @@ void parser::do_function_call(lexeme l, std::map<std::string, identifier*>&symbo
     // this later to collapse the stack frame after the function returns
     unsigned int argument_stack_space_size = 0;
     std::string retvaldreg, stashdreg; // Data register name used to process this factor
-    char msg[200];
     // Function Call
     std::string funcname = l.getText().c_str();
     lexeme paren = this->lex->getNextLexeme(); // Eat the open paren
@@ -25,9 +24,8 @@ void parser::do_function_call(lexeme l, std::map<std::string, identifier*>&symbo
 
         std::string argreg = dataRegStatementStack.top();
         dataRegStatementStack.pop();
-        snprintf(msg, sizeof(msg), "    MOVE.L %s,-(A7)", argreg.c_str());
         argument_stack_space_size += 4; // Increment stack frame size by the size of the arg we are passing
-        emit(msg);
+        emit("    MOVE.L " + argreg + ",-(A7)");
         dataRegFreeStack.push(argreg);
 
         if(this->lex->peekLexeme().getText() == ",") { // If next lexeme is a comma, just blindly eat it
@@ -45,26 +43,20 @@ void parser::do_function_call(lexeme l, std::map<std::string, identifier*>&symbo
     // Stash the value in D0 temporarily in a different data reg so the return value doesn't overwrite it.
     stashdreg = dataRegFreeStack.top();
     dataRegFreeStack.pop();
-//        std::cerr << "allocating register " << dreg << "\n";
     // Only stash D0 if its value is currently in use.
     if(retvaldreg != "D0") {
-        snprintf(msg, sizeof(msg), "    MOVE.L D0,%s", stashdreg.c_str());
-        emit(msg);
+        emit("    MOVE.L D0," + stashdreg);
     }
 
-    snprintf(msg, sizeof(msg), "    BSR %s", l.getText().c_str());
-    emit(msg);
+    emit("    BSR " + l.getText());
     if(argument_stack_space_size > 0) {
-        snprintf(msg, sizeof(msg), "    ADDA.L #%d,A7", argument_stack_space_size); // Collapse the function call stack frame
-        emit(msg);
+        emit("    ADDA.L #" + std::to_string(argument_stack_space_size) + ",A7");
     }
 
-    snprintf(msg, sizeof(msg), "    MOVE.L D0,%s", retvaldreg.c_str());
-    emit(msg);
+    emit("    MOVE.L D0," + retvaldreg);
     dataRegFreeStack.push(stashdreg);
     if(retvaldreg != "D0") {
-        snprintf(msg, sizeof(msg), "    MOVE.L %s,D0", stashdreg.c_str());
-        emit(msg);
+        emit("    MOVE.L " + stashdreg + ",D0");
     }
 }
 
@@ -87,15 +79,13 @@ void parser::error(const char *msg) {
 }
 
 void parser::function() {
-    char buf[200];
     unsigned int stack_frame_pos = 8; // first variable on the stack frame will start right above the return address at A6+8
     std::map<std::string, identifier*> symbolTable;
 
     lexeme returntype =  lex->getNextLexeme(); // Get the function's return type
     lexeme funcname = lex->getNextLexeme(); // Get function name
 
-    snprintf(buf, sizeof(buf), "%s:", funcname.getText().c_str());
-    emit(buf);
+    emit(funcname.getText() + ":");
 
     // Read function arguments
     lexeme arglex = lex->getNextLexeme(); // Get open paren
@@ -117,10 +107,8 @@ void parser::function() {
             for(k = 0; k < 30-strlen(newident.c_str()); k++) {
                 strcat(spaces, " ");
             }
-            snprintf(buf, sizeof(buf), "%s |--------------------------------|", COMMENT_STRING);
-            emit (buf);
-            snprintf(buf, sizeof(buf), "%s | %s%s |  FP + %d", COMMENT_STRING, newident.c_str(), spaces, symbolTable[newident]->getStackFramePosition());
-            emit (buf);
+            emit(std::string(COMMENT_STRING) + std::string(" |--------------------------------|"));
+            emit(std::string(COMMENT_STRING) + " | " + newident + " " + std::string(spaces) + " | " + std::to_string(symbolTable[newident]->getStackFramePosition()));
         }
 
         arglex = lex->peekLexeme(); // Read the next lexeme to decide if we need to break out of the loop
@@ -141,8 +129,6 @@ void parser::function() {
  */
 void parser::block(std::map<std::string, identifier*>&symbolTable) {
     int totalBytesInStackFrame = 0;
-    char buf[200];
-//    std::map<std::string,identifier*> symbolTable;
 
     lexeme l = lex->peekLexeme();
 
@@ -155,16 +141,11 @@ void parser::block(std::map<std::string, identifier*>&symbolTable) {
     l = lex->getNextLexeme();
 
     if(debuglevel > 1) {
-        snprintf(buf, sizeof(buf), "%s |--------------------------------|", COMMENT_STRING);
-        emit(buf);
-        snprintf(buf, sizeof(buf), "%s | RETURN ADDRESS                 |", COMMENT_STRING);
-        emit(buf);
-        snprintf(buf, sizeof(buf), "%s |--------------------------------|", COMMENT_STRING);
-        emit(buf);
-        snprintf(buf, sizeof(buf), "%s | FP                             | <-- A6", COMMENT_STRING);
-        emit(buf);
-        snprintf(buf, sizeof(buf), "%s |--------------------------------|", COMMENT_STRING);
-        emit(buf);
+        emit(std::string(COMMENT_STRING) + std::string(" |--------------------------------|"));
+        emit(std::string(COMMENT_STRING) + std::string(" | RETURN ADDRESS                 |"));
+        emit(std::string(COMMENT_STRING) + std::string(" |--------------------------------|"));
+        emit(std::string(COMMENT_STRING) + std::string(" | FP                             | <-- A6"));
+        emit(std::string(COMMENT_STRING) + std::string(" |--------------------------------|"));
     }
     // Process declarations
     while((this->lex->peekLexeme().getType() == LEXEME_TYPE_KEYWORD) && (this->lex->peekLexeme().getSubtype() == KEYWORD_TYPE_INT)) {
@@ -182,35 +163,12 @@ void parser::block(std::map<std::string, identifier*>&symbolTable) {
             for(k = 0; k < 30-strlen(newident.c_str()); k++) {
                 strcat(spaces, " ");
             }
-            snprintf(buf, sizeof(buf), "%s | %s%s |  FP - %d",COMMENT_STRING, newident.c_str(), spaces, -symbolTable[newident]->getStackFramePosition());
-            emit (buf);
-            snprintf(buf, sizeof(buf), "%s |--------------------------------|", COMMENT_STRING);
-            emit(buf);
+            emit(std::string(COMMENT_STRING) + std::string(" | " + newident + std::string(spaces) + "  |  FP - " + std::to_string(symbolTable[newident]->getStackFramePosition())));
+            emit(std::string(COMMENT_STRING) + std::string(" |--------------------------------|"));
         }
     }
-#if 0
-    if(debuglevel > 1) {
-        snprintf(buf, sizeof(buf), "%s |--------------------------------|", COMMENT_STRING);
-        emit(buf);
-    }
-#endif
-    //////////////////////////////////////////
-    // Iterate thru the declarations. Count the total size of the stack frame to be created, and mark the location of each identifier on the stack.
-#if 0
-    std::map<std::string, identifier*>::iterator it;
 
-    for (auto const& [key, val] : symbolTable) {
-        totalBytesInStackFrame += val->getNumBytes();
-        val->setStackFramePosition(-totalBytesInStackFrame);
-        std::cerr << "identifier name \"" << key    // string (key)
-              << "\" : "
-              << " Num bytes " << val->getNumBytes()   // string's value
-              << " Stack Frame loc " << val->getStackFramePosition()
-              << std::endl;
-    }
-#endif
-    std::string linkinstr("    LINK A6,#");
-    linkinstr.append(std::to_string(-totalBytesInStackFrame));
+    std::string linkinstr("    LINK A6,#" + std::to_string(-totalBytesInStackFrame));
     emit(linkinstr);
     emit((char*)"    MOVEM.L D1-D7/A0-A5,-(A7)");
     // Done iterating thru declarations
@@ -240,7 +198,7 @@ void parser::emit(char *s) {
 }
 
 
-void parser::emit(std::string &s) {
+void parser::emit(std::string s) {
      *os << s << std::endl;
 }
 
@@ -364,21 +322,17 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
             this->expression(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
 
             // Store the result on the stack at the location allocated to the identifier
-            char msg[200];
-            snprintf(msg, sizeof(msg), "    MOVE.L %s,%d(A6)", dataRegStatementStack.top().c_str(), id->getStackFramePosition());
-            emit(msg);
+            emit("    MOVE.L " + dataRegStatementStack.top() + "," + std::to_string(id->getStackFramePosition()) + "(A6)");
         }
     } else if ((l.getType() == LEXEME_TYPE_KEYWORD) && (l.getSubtype() == KEYWORD_TYPE_RETURN)) {
         // Handle return statements -- first, process the expression in the
         // return statement. The result of the expression will be stored on the
         // top of dataRegStatementStack. We will put this value into D0
-        char msg[200];
         lexeme keywordlexeme = l; // Eat the return keyword
         this->expression(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
 
         // Get the result of the expression into D0
-        snprintf(msg, sizeof(msg), "    MOVE.L %s,D0", dataRegStatementStack.top().c_str());
-        emit(msg);
+        emit("    MOVE.L " + dataRegStatementStack.top() + ",D0");
         dataRegStatementStack.pop(); // Remove the result of the expression from the DataRegStatementStack
     } else {
         this->error("Expected: identifier at beginning of statement");
@@ -418,24 +372,16 @@ void parser::expression(std::map<std::string, identifier*>&symbolTable, std::sta
         dataRegStatementStack.pop();
 
         if(sign_lexeme.getText() == "+") {
-            snprintf(msg,sizeof(msg), "    ADD %s,%s", op1.c_str(), op2.c_str());
+            emit("    ADD.L "+ op1 + "," + op2);
         } else if (sign_lexeme.getText() == "-") {
-            snprintf(msg,sizeof(msg), "    SUB %s,%s", op1.c_str(), op2.c_str());
+            emit("    SUB.L "+ op1 + "," + op2);
         } else {
             snprintf(msg, sizeof(msg), "Error: expected `+' or `-' in expression. Got \"%s\"", sign_lexeme.getText().c_str());
             error(msg);
         }
-        emit(msg);
         dataRegFreeStack.push(op1); // Reclaim one of the data registers
         dataRegStatementStack.push(op2); // Put the result register on the statement stack
-
     }
-/*
-    while(this->lex->peekLexeme().getType() != LEXEME_TYPE_SEMICOLON) {
-        lexeme l;
-        l = lex->getNextLexeme();
-    }
-*/
 }
 
 /*
@@ -465,18 +411,15 @@ void parser::term(std::map<std::string, identifier*>&symbolTable, std::stack<std
         dataRegStatementStack.pop();
 
         if(mulop_lexeme.getText() == "*") {
-            snprintf(msg,sizeof(msg), "    MULS %s,%s", op1.c_str(), op2.c_str());
+            emit("    MULS "+ op1 + "," + op2);
         } else if (mulop_lexeme.getText() == "/") {
-            snprintf(msg,sizeof(msg), "    DIVS %s,%s", op1.c_str(), op2.c_str());
+            emit("    DIVS "+ op1 + "," + op2);
         } else {
             snprintf(msg, sizeof(msg), "Error: expected `*' or `/' in term. Got \"%s\"", mulop_lexeme.getText().c_str());
             error(msg);
         }
-        emit(msg);
         dataRegFreeStack.push(op1); // Reclaim one of the data registers
         dataRegStatementStack.push(op2);
-
-
     }
 }
 
@@ -492,20 +435,16 @@ void parser::signedfactor(std::map<std::string, identifier*>&symbolTable, std::s
         sign.setType(LEXEME_TYPE_ADDOP);
         sign.setText("+");
     }
-
     
     this->factor(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
     
     if(sign.getText() == "-") {
         // If the factor has a `-' sign in front of it, negate the value.
         std::string regname =  dataRegStatementStack.top();
-        char buf[200];
-        snprintf(buf, sizeof(buf), "    NEG.L %s", regname.c_str());
-        emit(buf);
+        emit("    NEG.L " + regname);
 
     }
 }
-
 
 void parser::factor(std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack) {
 
@@ -519,18 +458,13 @@ void parser::factor(std::map<std::string, identifier*>&symbolTable, std::stack<s
     l = this->lex->getNextLexeme(); // Get the next lexeme. Should be a constant, identifier, or open parentheses
     switch(l.getType()) {
     case LEXEME_TYPE_INTEGER:
-        //std::cerr << "[parser::factor] Found integer constant. ";
         dreg = dataRegFreeStack.top();
         dataRegFreeStack.pop();
         dataRegStatementStack.push(dreg);
-        //std::cerr << "allocating register " << dreg << "\n";
-        snprintf(msg, sizeof(msg), "    MOVE.L #%d,%s", l.getValue(), dreg.c_str());
-        emit(msg);
+        emit("    MOVE.L #" + std::to_string(l.getValue()) + "," + dreg);
 
         break;
     case LEXEME_TYPE_IDENT:
-//        std::cerr << "[parser::factor] Found identifier\n";
-
         if((this->lex->peekLexeme().getType() == LEXEME_TYPE_PARENTHESES) && (this->lex->peekLexeme().getText() == "(")) {
             
             do_function_call(l, symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
@@ -544,9 +478,7 @@ void parser::factor(std::map<std::string, identifier*>&symbolTable, std::stack<s
             dreg = dataRegFreeStack.top();
             dataRegFreeStack.pop();
             dataRegStatementStack.push(dreg);
-    //        std::cerr << "allocating register " << dreg << "\n";
-            snprintf(msg, sizeof(msg), "    MOVE.L %d(A6),%s", id->getStackFramePosition(), dreg.c_str());
-            emit(msg);
+            emit("    MOVE.L " + std::to_string(id->getStackFramePosition()) + "(A6),"+dreg);
         }
         break;
     case LEXEME_TYPE_PARENTHESES:
@@ -569,12 +501,4 @@ void parser::factor(std::map<std::string, identifier*>&symbolTable, std::stack<s
         error(msg);
         break;
     }
-    // Eat up all the lexemes in the statement...
-#if 0
-    while(this->lex->peekLexeme().getType() != LEXEME_TYPE_SEMICOLON) {
-//        std::cout << "[signedfactor] peekLexeme.getType() = " << this->lex->peekLexeme().getType() << std::endl;
-        l = lex->getNextLexeme();
-    }
-#endif
-
 }
