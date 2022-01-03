@@ -13,6 +13,7 @@ Grammar
     declaration   -> (int | short | char) identifier ;
     statement     -> identifier `=' expression
                    | return expression;
+                   | if ( bexpression ) block [else block]
     expression    -> term [(`+' | `-') term]*
     term          -> signedfactor [(`*' | `/') factor]*
     signedfactor  -> [(`+' | `-')] factor

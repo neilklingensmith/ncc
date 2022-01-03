@@ -17,6 +17,7 @@ private:
     std::string *input_file_name;
     std::ostream *os;
     std::string file_name;
+    void do_function_call(lexeme l, std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack);
 
 public:
     lexicalScanner *lex;
