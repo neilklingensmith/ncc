@@ -63,6 +63,10 @@ int lexicalScanner::isDigit(char c) {
     }
 }
 
+int lexicalScanner::isRelOp(char c) {
+    return (look == '<') || (look == '>') || (look == '=') || (look == '!');
+}
+
 int lexicalScanner::isAlNum(char c) {
     return isAlpha(c) | isDigit(c);
 }
@@ -89,6 +93,21 @@ std::string lexicalScanner::getName() {
     skipWhite();
     return name;
 }
+
+std::string lexicalScanner::getRelOp() {
+    std::string relop;
+
+    if(!isRelOp(this->look)) {
+        Expected("Integer");
+    }
+    while(isRelOp(this->look)) {
+        relop.push_back(this->look);
+        getChar();
+    }
+    skipWhite();
+    return relop;
+}
+
 
 int lexicalScanner::getNum() {
     std::string num;
@@ -143,7 +162,7 @@ unsigned int lexicalScanner::getCurrLineNumber() {
 }
 
 int lexicalScanner::isOp(char c) {
-    return (c == '+') || (c == '-') || (c =='*') || (c == '/') || (c == '<') || (c == '>') || (c == ':') || (c == '=');
+    return (c == '+') || (c == '-') || (c =='*') || (c == '/');
 }
 
 
@@ -169,6 +188,7 @@ lexeme lexicalScanner::getNextLexeme() {
     skipWhite();
     this->currLexeme.setValue(0);
     this->currLexeme.setType(0);
+    this->currLexeme.setSubtype(0);
     char looktxt[2] = {(char)look,0};
     currLexeme.setText(looktxt);
     if(isAlpha(look)) {
@@ -232,9 +252,28 @@ lexeme lexicalScanner::getNextLexeme() {
         getChar();
         skipWhite();
         currLexeme.setType(LEXEME_TYPE_COMMA);
+    } else if (isRelOp(look)) {
+        this->currLexeme.setText(getRelOp());
+        
+        if(this->currLexeme.getText() == "<") {
+            this->currLexeme.setSubtype(COMPARISON_TYPE_LESS_THAN);
+        } else if(this->currLexeme.getText() == ">") {
+            this->currLexeme.setSubtype(COMPARISON_TYPE_GREATER_THAN);
+        } else if(this->currLexeme.getText() == "<=") {
+            this->currLexeme.setSubtype(COMPARISON_TYPE_LESS_OR_EQUAL);
+        } else if(this->currLexeme.getText() == ">=") {
+            this->currLexeme.setSubtype(COMPARISON_TYPE_GREATER_OR_EQUAL);
+        } else if(this->currLexeme.getText() == "==") {
+            this->currLexeme.setSubtype(COMPARISON_TYPE_EQUAL);
+        } else if(this->currLexeme.getText() == "!=") {
+            this->currLexeme.setSubtype(COMPARISON_TYPE_NOT_EQUAL);
+        } else {
+            std::cerr << "[getNextLexeme] Got unknown relative operator \"" << this->currLexeme.getText() << "\"\n";
+            exit(1);
+        }
     } else {
         //std::cout << "[getNextLexeme] Got unknown " << look << "\n";
-        exit(0);
+        exit(1);
     }
 
     return lastLexeme;

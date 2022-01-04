@@ -15,7 +15,7 @@ int lexeme::getType() {
     return this->type;
 }
 
-int lexeme::getSubtype() {
+unsigned int lexeme::getSubtype() {
     return this->subtype;
 }
 

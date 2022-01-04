@@ -71,6 +71,14 @@ parser::parser(char *ifname, char *ofname) {
     } else {
         os = &std::cout;
     }
+    next_label_index = 0;
+}
+
+
+std::string parser::generateNewLabel() {
+    std::string newLabel("L" + std::to_string(this->next_label_index));
+    next_label_index++;
+    return newLabel;
 }
 
 void parser::error(const char *msg) {
@@ -134,7 +142,7 @@ void parser::block(std::map<std::string, identifier*>&symbolTable) {
 
     // Expected: open brace
     if(l.getType() != LEXEME_TYPE_OPENBRACE) {
-        std::cerr << "[block] got " << l.getType() << std::endl;
+        std::cerr << "[block] got \"" << l.getText() << "\"\n";
         this->error("Expected: `{'.");
     }
     // Eat the open brace
@@ -176,7 +184,6 @@ void parser::block(std::map<std::string, identifier*>&symbolTable) {
 
     // Keep eating statements from the block until we encounter a close brace `}'
     while(this->lex->peekLexeme().getType() != LEXEME_TYPE_CLOSEBRACE) {
-//        std::cerr << "Next lexeme type is " << this->lex->peekLexeme().getType() << "\n";
         this->statement(symbolTable); // Process statement
     }
 
@@ -233,20 +240,14 @@ std::string parser::declaration(std::map<std::string, identifier*>&symbolTable, 
     // Eat the datatype keyword
     lexeme datatypekeyword = this->lex->getNextLexeme();
 
-//    std::cerr << "[declaration] Got datatype " << datatypekeyword.getText() << " number of bytes = " << id->getNumBytes() << std::endl;
-
     // Add the new identifier to the symbol table.
     lexeme identifiername = this->lex->getNextLexeme();
-//    std::cerr << "Got identifier with name " << identifiername.getText() << std::endl;
     symbolTable.insert(std::pair<std::string,identifier*>(identifiername.getText(),id) );
 
     // Eat the semicolon lexeme
-    // TODO: error-check the terminator
     if(this->lex->peekLexeme().getType() & declaration_terminator) {
-        std::cerr << "[parser::declaration] Got semicolon \"" << this->lex->peekLexeme().getText() << "\" type = "<< this->lex->peekLexeme().getType() << std::endl;
         l = lex->getNextLexeme();
     } else {
-        std::cerr << "[parser::declaration] DIDN'T GET SEMICOLON!! GOT " << this->lex->peekLexeme().getType() << " INSTEAD!!" << std::endl;
         char msg[200];
         snprintf(msg, 200, "Expected semicolon at end of declaration. Got `%s' instead.", this->lex->peekLexeme().getText().c_str());
         error(msg);
@@ -293,7 +294,6 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
             do_function_call(l, symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
 
             lexeme paren = this->lex->getNextLexeme(); // Eat the semicolon
-            std::cerr << "[statement] Got lexeme \"" << paren.getText() << "\" after function call (expecting semicolon).\n";
             // do_function_call saves the function's return value in a register
             // that gets pushed on dataRegStatementStack. Since we don't need
             // that value (if we got here, we are calling a function and
@@ -334,6 +334,19 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
         // Get the result of the expression into D0
         emit("    MOVE.L " + dataRegStatementStack.top() + ",D0");
         dataRegStatementStack.pop(); // Remove the result of the expression from the DataRegStatementStack
+    } else if ((l.getType() == LEXEME_TYPE_KEYWORD) && (l.getSubtype() == KEYWORD_TYPE_IF)) {
+        if(this->lex->getNextLexeme().getText() != "(") {
+            error("Error: expected `(' after if.");
+        }
+        std::string bexpr_true_label = this->generateNewLabel();
+        std::string bexpr_false_label = this->generateNewLabel();
+        this->bexpression(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack, bexpr_true_label, bexpr_false_label);
+        if(this->lex->getNextLexeme().getText() != ")") {
+            error("Error: expected `)' at end of if block.");
+        }
+        emit(bexpr_true_label + ":");
+        block(symbolTable);
+        emit(bexpr_false_label + ":");
     } else {
         this->error("Expected: identifier at beginning of statement");
     }
@@ -342,6 +355,80 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
         l = lex->getNextLexeme();
     }
 //    std::cout << "Done processing statement...\n\n";
+}
+
+void parser::bexpression(std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack, std::string true_label, std::string false_label) {
+//    this->bterm(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
+
+    // Temporary: Put relation code in here.
+    std::cerr << "[parser::bexpression] Next lexeme is \"" << this->lex->peekLexeme().getText() << "\"\n";
+
+    // Process the first factor
+    this->factor(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack); // Process the factor
+    
+    // Get the relative operation
+    lexeme relop = this->lex->getNextLexeme();
+
+    // Process the second factor
+    this->factor(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack); // Process the factor
+
+    // Get the factors to compare from the dataRegStatementStack. They were put
+    // there by the two previous calls to this->factor()
+    std::string firstfactorreg = dataRegStatementStack.top();
+    dataRegStatementStack.pop();
+
+    std::string secondfactorreg = dataRegStatementStack.top();
+    dataRegStatementStack.pop();
+
+    emit("    CMP " + firstfactorreg + "," + secondfactorreg);
+
+    switch(relop.getSubtype()) {
+    case COMPARISON_TYPE_LESS_THAN:
+        emit("    BLT " + true_label);
+        emit("    BRA " + false_label);
+        break;
+    case COMPARISON_TYPE_GREATER_THAN:
+        emit("    BGT " + true_label);
+        emit("    BRA " + false_label);
+        break;
+    case COMPARISON_TYPE_LESS_OR_EQUAL:
+        emit("    BLE " + true_label);
+        emit("    BRA " + false_label);
+        break;
+    case COMPARISON_TYPE_GREATER_OR_EQUAL:
+        emit("    BGE " + true_label);
+        emit("    BRA " + false_label);
+        break;
+    case COMPARISON_TYPE_EQUAL:
+        emit("    BEQ " + true_label);
+        emit("    BRA " + false_label);
+        break;
+    case COMPARISON_TYPE_NOT_EQUAL:
+        emit("    BNE " + true_label);
+        emit("    BRA " + false_label);
+        break;
+        }
+
+}
+
+
+void parser::bterm(std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack) {
+
+    this->notfactor(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
+}
+
+void parser::notfactor(std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack) {
+
+    this->bfactor(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
+}
+
+void parser::bfactor(std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack) {
+
+    this->relation(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
+}
+
+void parser::relation(std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack) {
+
 }
 
 /*
@@ -355,11 +442,8 @@ void parser::expression(std::map<std::string, identifier*>&symbolTable, std::sta
     // Process the first term
     this->term(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack); // Eat the identifier
 
-    std::cerr << "[parser::expression] next lexeme type is " << this->lex->peekLexeme().getType() << "\n";
-
     // Check if we have an addop after the first term.
     while(this->lex->peekLexeme().getType() == LEXEME_TYPE_ADDOP) {
-        std::cerr << "[parser::expression] Processing another term in expression...\n";
         lexeme sign_lexeme = this->lex->getNextLexeme(); // Get the sign (`+' or `-')
         this->term(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack); // Eat the identifier
 
@@ -397,8 +481,6 @@ void parser::term(std::map<std::string, identifier*>&symbolTable, std::stack<std
 
     // Handle multiple factors following the first signed factor
     while(this->lex->peekLexeme().getType() == LEXEME_TYPE_MULOP) {
-        std::cerr << "[parser::term] Processing another factor in term...\n";
-
         lexeme mulop_lexeme = this->lex->getNextLexeme(); // Get the operation (`*' or `/')
         this->factor(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack); // Process the factor
 
@@ -445,10 +527,19 @@ void parser::signedfactor(std::map<std::string, identifier*>&symbolTable, std::s
 
     }
 }
-
+/*
+ * factor
+ *
+ * Processes a factor of the form:
+ *
+ *  factor        -> constant | identifier | `(' <expression> `)'
+ *                 | funcname ( [identifier ,]* ) ;
+ *
+ * The result of the factor is stored in a data register, which is saved on top
+ * of the dataRegStatementStack.
+ *
+ */
 void parser::factor(std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack) {
-
-    // factor        -> constant | identifier | `(' expression `)'
 
     lexeme l;
     identifier *id;

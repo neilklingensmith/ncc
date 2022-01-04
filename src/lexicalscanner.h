@@ -27,8 +27,10 @@ private:
     int isAlNum(char c);
     int isDigit(char c);
     int isAlpha(char c);
+    int isRelOp(char c);
     void getName(char *Name, unsigned int len);
     int getNum();
+    std::string getRelOp();
     std::string getOp();
     std::string getName();
     void getChar();

@@ -27,10 +27,19 @@
 // Preprocessor Definitions
 
 // Keyword Types
-#define KEYWORD_TYPE_IF           0x8001
-#define KEYWORD_TYPE_INT          0x8002
-#define KEYWORD_TYPE_WHILE        0x8003
-#define KEYWORD_TYPE_RETURN       0x8004
+#define KEYWORD_TYPE_IF                  0x80000001
+#define KEYWORD_TYPE_INT                 0x80000002
+#define KEYWORD_TYPE_WHILE               0x80000003
+#define KEYWORD_TYPE_RETURN              0x80000004
+
+
+
+#define COMPARISON_TYPE_LESS_THAN        0x90000001
+#define COMPARISON_TYPE_GREATER_THAN     0x90000002
+#define COMPARISON_TYPE_LESS_OR_EQUAL    0x90000003
+#define COMPARISON_TYPE_GREATER_OR_EQUAL 0x90000004
+#define COMPARISON_TYPE_EQUAL            0x90000005
+#define COMPARISON_TYPE_NOT_EQUAL        0x90000006
 
 class lexeme {
 
@@ -39,7 +48,7 @@ public:
     void setType(int newType);
     int getType();
     void setSubtype(int newSubtype);
-    int getSubtype();
+    unsigned int getSubtype();
     std::string getText();
     void setText(std::string newText);
     int getValue();
