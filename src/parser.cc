@@ -115,8 +115,8 @@ void parser::function() {
             for(k = 0; k < 30-strlen(newident.c_str()); k++) {
                 strcat(spaces, " ");
             }
-            emit(std::string(COMMENT_STRING) + std::string(" |--------------------------------|"));
-            emit(std::string(COMMENT_STRING) + " | " + newident + " " + std::string(spaces) + " | " + std::to_string(symbolTable[newident]->getStackFramePosition()));
+            emit(std::string(COMMENT_STRING) + std::string(" |---------------------------------|"));
+            emit(std::string(COMMENT_STRING) + " | " + newident + " " + std::string(spaces) + " | FP + " + std::to_string(symbolTable[newident]->getStackFramePosition()));
         }
 
         arglex = lex->peekLexeme(); // Read the next lexeme to decide if we need to break out of the loop
@@ -149,11 +149,11 @@ void parser::block(std::map<std::string, identifier*>&symbolTable) {
     l = lex->getNextLexeme();
 
     if(debuglevel > 1) {
-        emit(std::string(COMMENT_STRING) + std::string(" |--------------------------------|"));
-        emit(std::string(COMMENT_STRING) + std::string(" | RETURN ADDRESS                 |"));
-        emit(std::string(COMMENT_STRING) + std::string(" |--------------------------------|"));
-        emit(std::string(COMMENT_STRING) + std::string(" | FP                             | <-- A6"));
-        emit(std::string(COMMENT_STRING) + std::string(" |--------------------------------|"));
+        emit(std::string(COMMENT_STRING) + std::string(" |---------------------------------|"));
+        emit(std::string(COMMENT_STRING) + std::string(" | RETURN ADDRESS                  |"));
+        emit(std::string(COMMENT_STRING) + std::string(" |---------------------------------|"));
+        emit(std::string(COMMENT_STRING) + std::string(" | FP                              | <-- A6"));
+        emit(std::string(COMMENT_STRING) + std::string(" |---------------------------------|"));
     }
     // Process declarations
     while((this->lex->peekLexeme().getType() == LEXEME_TYPE_KEYWORD) && (this->lex->peekLexeme().getSubtype() == KEYWORD_TYPE_INT)) {
@@ -171,8 +171,8 @@ void parser::block(std::map<std::string, identifier*>&symbolTable) {
             for(k = 0; k < 30-strlen(newident.c_str()); k++) {
                 strcat(spaces, " ");
             }
-            emit(std::string(COMMENT_STRING) + std::string(" | " + newident + std::string(spaces) + "  |  FP - " + std::to_string(symbolTable[newident]->getStackFramePosition())));
-            emit(std::string(COMMENT_STRING) + std::string(" |--------------------------------|"));
+            emit(std::string(COMMENT_STRING) + std::string(" | " + newident + std::string(spaces) + "  |  FP - " + std::to_string(-symbolTable[newident]->getStackFramePosition())));
+            emit(std::string(COMMENT_STRING) + std::string(" |---------------------------------|"));
         }
     }
 
@@ -357,6 +357,7 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
 //    std::cout << "Done processing statement...\n\n";
 }
 
+// NOTE: Productions for logical expressions are on page 402 of the dragon book
 void parser::bexpression(std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack, std::string true_label, std::string false_label) {
 //    this->bterm(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
 

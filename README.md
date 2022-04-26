@@ -26,4 +26,4 @@ Grammar
                    | funcname ( [identifier ,]* ) ;
 
 
-
+NOTE: Productions for logical expressions are on page 402 of the dragon book.

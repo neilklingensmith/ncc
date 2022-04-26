@@ -162,7 +162,7 @@ unsigned int lexicalScanner::getCurrLineNumber() {
 }
 
 int lexicalScanner::isOp(char c) {
-    return (c == '+') || (c == '-') || (c =='*') || (c == '/');
+    return (c == '+') || (c == '-') || (c =='*') || (c == '/') || (look == '<') || (look == '>') || (look == '=') || (look == '!');
 }
 
 
@@ -224,7 +224,29 @@ lexeme lexicalScanner::getNextLexeme() {
             currLexeme.setType(LEXEME_TYPE_MULOP);
         } else if( op == "=") {
             currLexeme.setType(LEXEME_TYPE_ASSIGNMENTOP);
+        } else if(op == "<") {
+            currLexeme.setType(LEXEME_TYPE_RELOP);
+            this->currLexeme.setSubtype(COMPARISON_TYPE_LESS_THAN);
+        } else if(op == ">") {
+            currLexeme.setType(LEXEME_TYPE_RELOP);
+            this->currLexeme.setSubtype(COMPARISON_TYPE_GREATER_THAN);
+        } else if(op == "<=") {
+            currLexeme.setType(LEXEME_TYPE_RELOP);
+            this->currLexeme.setSubtype(COMPARISON_TYPE_LESS_OR_EQUAL);
+        } else if(op == ">=") {
+            currLexeme.setType(LEXEME_TYPE_RELOP);
+            this->currLexeme.setSubtype(COMPARISON_TYPE_GREATER_OR_EQUAL);
+        } else if(op == "==") {
+            currLexeme.setType(LEXEME_TYPE_RELOP);
+            this->currLexeme.setSubtype(COMPARISON_TYPE_EQUAL);
+        } else if(op == "!=") {
+            currLexeme.setType(LEXEME_TYPE_RELOP);
+            this->currLexeme.setSubtype(COMPARISON_TYPE_NOT_EQUAL);
+        } else {
+            std::cerr << "[getNextLexeme] Got unknown relative operator \"" << this->currLexeme.getText() << "\"\n";
+            exit(1);
         }
+
         currLexeme.setText(op);
 //        std::cout << "[getNextLexeme] got operator " << op << "\n";
     } else if (look == ';') {
@@ -252,6 +274,7 @@ lexeme lexicalScanner::getNextLexeme() {
         getChar();
         skipWhite();
         currLexeme.setType(LEXEME_TYPE_COMMA);
+#if 0
     } else if (isRelOp(look)) {
         this->currLexeme.setText(getRelOp());
         
@@ -271,6 +294,7 @@ lexeme lexicalScanner::getNextLexeme() {
             std::cerr << "[getNextLexeme] Got unknown relative operator \"" << this->currLexeme.getText() << "\"\n";
             exit(1);
         }
+#endif
     } else {
         //std::cout << "[getNextLexeme] Got unknown " << look << "\n";
         exit(1);

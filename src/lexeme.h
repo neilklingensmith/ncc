@@ -21,7 +21,7 @@
 #define LEXEME_TYPE_OPENBRACE       0x100
 #define LEXEME_TYPE_CLOSEBRACE      0x200
 #define LEXEME_TYPE_COMMA           0x400
-
+#define LEXEME_TYPE_RELOP           0x800
 
 /////////////////////////////////////////////////////
 // Preprocessor Definitions
