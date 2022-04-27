@@ -123,7 +123,14 @@ void parser::function() {
 
     // parser::declaration will eat the close parentheses `)' at the end of the function arg list. We are looking for an open brace to terminate this loop
     } while(arglex.getType() != LEXEME_TYPE_OPENBRACE);
+
+    if(debuglevel > 1) {
+        emit(std::string(COMMENT_STRING) + std::string(" |---------------------------------|"));
+        emit(std::string(COMMENT_STRING) + std::string(" | RETURN ADDRESS                  |"));
+    }
+
     block(symbolTable);
+    emit((char*)"    RTS");
 }
 
 
@@ -149,8 +156,6 @@ void parser::block(std::map<std::string, identifier*>&symbolTable) {
     l = lex->getNextLexeme();
 
     if(debuglevel > 1) {
-        emit(std::string(COMMENT_STRING) + std::string(" |---------------------------------|"));
-        emit(std::string(COMMENT_STRING) + std::string(" | RETURN ADDRESS                  |"));
         emit(std::string(COMMENT_STRING) + std::string(" |---------------------------------|"));
         emit(std::string(COMMENT_STRING) + std::string(" | FP                              | <-- A6"));
         emit(std::string(COMMENT_STRING) + std::string(" |---------------------------------|"));
@@ -189,7 +194,6 @@ void parser::block(std::map<std::string, identifier*>&symbolTable) {
 
     emit((char*)"    MOVEM.L (A7)+,D1-D7/A0-A5");
     emit((char*)"    UNLK A6");
-    emit((char*)"    RTS");
     // Expected: close brace
     l = lex->getNextLexeme();
     if(l.getType() != LEXEME_TYPE_CLOSEBRACE) {
@@ -362,7 +366,7 @@ void parser::bexpression(std::map<std::string, identifier*>&symbolTable, std::st
 //    this->bterm(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
 
     // Temporary: Put relation code in here.
-    std::cerr << "[parser::bexpression] Next lexeme is \"" << this->lex->peekLexeme().getText() << "\"\n";
+//    std::cerr << "[parser::bexpression] Next lexeme is \"" << this->lex->peekLexeme().getText() << "\"\n";
 
     // Process the first factor
     this->factor(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack); // Process the factor
