@@ -129,7 +129,7 @@ void parser::function() {
         emit(std::string(COMMENT_STRING) + std::string(" | RETURN ADDRESS                  |"));
     }
 
-    block(symbolTable);
+    block(symbolTable, 1);
     emit((char*)"    RTS");
 }
 
@@ -142,7 +142,7 @@ void parser::function() {
  *
  *
  */
-void parser::block(std::map<std::string, identifier*>&symbolTable) {
+void parser::block(std::map<std::string, identifier*>&symbolTable, int createStackFrame) {
     int totalBytesInStackFrame = 0;
 
     lexeme l = lex->peekLexeme();
@@ -154,36 +154,37 @@ void parser::block(std::map<std::string, identifier*>&symbolTable) {
     }
     // Eat the open brace
     l = lex->getNextLexeme();
-
-    if(debuglevel > 1) {
-        emit(std::string(COMMENT_STRING) + std::string(" |---------------------------------|"));
-        emit(std::string(COMMENT_STRING) + std::string(" | FP                              | <-- A6"));
-        emit(std::string(COMMENT_STRING) + std::string(" |---------------------------------|"));
-    }
-    // Process declarations
-    while((this->lex->peekLexeme().getType() == LEXEME_TYPE_KEYWORD) && (this->lex->peekLexeme().getSubtype() == KEYWORD_TYPE_INT)) {
-        // Found a declaration
-        std::string newident = this->declaration(symbolTable, LEXEME_TYPE_SEMICOLON);
-        totalBytesInStackFrame += symbolTable[newident]->getNumBytes();
-        symbolTable[newident]->setStackFramePosition(-totalBytesInStackFrame);
-
+    if(createStackFrame) {
         if(debuglevel > 1) {
-            // If the user has enabled debugging, we will print the variables locations on the stack frame
-            char spaces[50];
-            unsigned int k;
-            memset(spaces, 0, sizeof(spaces));
-
-            for(k = 0; k < 30-strlen(newident.c_str()); k++) {
-                strcat(spaces, " ");
-            }
-            emit(std::string(COMMENT_STRING) + std::string(" | " + newident + std::string(spaces) + "  |  FP - " + std::to_string(-symbolTable[newident]->getStackFramePosition())));
+            emit(std::string(COMMENT_STRING) + std::string(" |---------------------------------|"));
+            emit(std::string(COMMENT_STRING) + std::string(" | FP                              | <-- A6"));
             emit(std::string(COMMENT_STRING) + std::string(" |---------------------------------|"));
         }
-    }
+        // Process declarations
+        while((this->lex->peekLexeme().getType() == LEXEME_TYPE_KEYWORD) && (this->lex->peekLexeme().getSubtype() == KEYWORD_TYPE_INT)) {
+            // Found a declaration
+            std::string newident = this->declaration(symbolTable, LEXEME_TYPE_SEMICOLON);
+            totalBytesInStackFrame += symbolTable[newident]->getNumBytes();
+            symbolTable[newident]->setStackFramePosition(-totalBytesInStackFrame);
 
-    std::string linkinstr("    LINK A6,#" + std::to_string(-totalBytesInStackFrame));
-    emit(linkinstr);
-    emit((char*)"    MOVEM.L D1-D7/A0-A5,-(A7)");
+            if(debuglevel > 1) {
+                // If the user has enabled debugging, we will print the variables locations on the stack frame
+                char spaces[50];
+                unsigned int k;
+                memset(spaces, 0, sizeof(spaces));
+
+                for(k = 0; k < 30-strlen(newident.c_str()); k++) {
+                    strcat(spaces, " ");
+                }
+                emit(std::string(COMMENT_STRING) + std::string(" | " + newident + std::string(spaces) + "  |  FP - " + std::to_string(-symbolTable[newident]->getStackFramePosition())));
+                emit(std::string(COMMENT_STRING) + std::string(" |---------------------------------|"));
+            }
+        }
+
+        std::string linkinstr("    LINK A6,#" + std::to_string(-totalBytesInStackFrame));
+        emit(linkinstr);
+        emit((char*)"    MOVEM.L D1-D7/A0-A5,-(A7)");
+    }
     // Done iterating thru declarations
     /////////////////////////////////////////
 
@@ -192,8 +193,10 @@ void parser::block(std::map<std::string, identifier*>&symbolTable) {
         this->statement(symbolTable); // Process statement
     }
 
-    emit((char*)"    MOVEM.L (A7)+,D1-D7/A0-A5");
-    emit((char*)"    UNLK A6");
+    if(createStackFrame) {
+        emit((char*)"    MOVEM.L (A7)+,D1-D7/A0-A5");
+        emit((char*)"    UNLK A6");
+    }
     // Expected: close brace
     l = lex->getNextLexeme();
     if(l.getType() != LEXEME_TYPE_CLOSEBRACE) {
@@ -349,7 +352,7 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
             error("Error: expected `)' at end of if block.");
         }
         emit(bexpr_true_label + ":");
-        block(symbolTable);
+        block(symbolTable,0);
         emit(bexpr_false_label + ":");
     } else {
         this->error("Expected: identifier at beginning of statement");
