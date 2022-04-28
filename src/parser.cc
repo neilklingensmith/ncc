@@ -103,7 +103,7 @@ void parser::error(const char *msg) {
     exit(1);
 }
 
-void parser::function() {
+int parser::function() {
     unsigned int stack_frame_pos = 8; // first variable on the stack frame will start right above the return address at A6+8
     std::map<std::string, identifier*> symbolTable;
 
@@ -148,6 +148,11 @@ void parser::function() {
 
     block(symbolTable, 1);
     emit((char*)"    RTS");
+    if(lex->peekLexeme().getType() == LEXEME_TYPE_EOF){
+        return -1;
+    } else {
+        return 0;
+    }
 }
 
 

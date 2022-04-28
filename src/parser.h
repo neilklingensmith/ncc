@@ -26,7 +26,7 @@ public:
     void emit(std::string);
     void emit(char*);
     void error(const char *msg);
-    void function();
+    int function();
     void block(std::map<std::string, identifier*>&symbolTable, int createStackFrame);
     void statement(std::map<std::string, identifier*>&symbolTable);
     std::string declaration(std::map<std::string, identifier*>&symbolTable, int declaration_terminator);

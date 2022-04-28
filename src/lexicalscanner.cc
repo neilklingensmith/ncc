@@ -314,8 +314,10 @@ lexeme lexicalScanner::getNextLexeme() {
             exit(1);
         }
 #endif
+    } else if (look == EOF) {
+        currLexeme.setType(LEXEME_TYPE_EOF);
     } else {
-        //std::cout << "[getNextLexeme] Got unknown " << look << "\n";
+        std::cout << "[getNextLexeme] Got unknown " << look << "\n";
         exit(1);
     }
 
