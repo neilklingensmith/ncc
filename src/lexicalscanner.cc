@@ -137,11 +137,30 @@ std::string lexicalScanner::getOp() {
     return op;
 }
 
+void lexicalScanner::printNextLine() {
+    int c;
+    int startpos = this->is->tellg();
+    std::string linestr;
+    do {
+        c = this->is->get();
+        if((c == '\n') || (c == EOF)) {
+            break;
+        }
+//        std::cout << (char)c;
+        linestr += (char)c;
+    } while((c != '\n') && (c != EOF));
+    if(linestr.length() > 0) {
+        std::cout << ";  " << linestr << "\n";
+    }
+    is->seekg(startpos);
+}
+
 void lexicalScanner::getChar() {
     this->look = this->is->get();
     if(this->look == '\n') {
         this->currLineNumber++;
         currColumnNumber = 0;
+        printNextLine();
     }
     if((this->look != '\n') && (this->look != '\r')){
         currColumnNumber++;

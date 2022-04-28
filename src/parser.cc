@@ -3,6 +3,7 @@
 
 #include "parser.h"
 #include <map>
+#include <sstream>
 #include <cstring>
 
 extern unsigned int debuglevel;
@@ -17,6 +18,15 @@ void parser::do_function_call(lexeme l, std::map<std::string, identifier*>&symbo
     std::string funcname = l.getText().c_str();
     lexeme paren = this->lex->getNextLexeme(); // Eat the open paren
 
+
+    // Copped from:
+    // https://stackoverflow.com/questions/5419356/redirect-stdout-stderr-to-a-string
+    std::stringstream tmp_cout_buf;
+    std::string function_call_instructions;
+    std::streambuf * old = std::cout.rdbuf(tmp_cout_buf.rdbuf());
+
+    std::string text = tmp_cout_buf.str(); // text will now contain "Bla\n"
+
     // Process function arguments
     while(this->lex->peekLexeme().getType() == LEXEME_TYPE_IDENT) {
         // expression
@@ -28,10 +38,17 @@ void parser::do_function_call(lexeme l, std::map<std::string, identifier*>&symbo
         emit("    MOVE.L " + argreg + ",-(A7)");
         dataRegFreeStack.push(argreg);
 
+        function_call_instructions = tmp_cout_buf.str() + function_call_instructions;
+        tmp_cout_buf.str("");
+
         if(this->lex->peekLexeme().getText() == ",") { // If next lexeme is a comma, just blindly eat it
             this->lex->getNextLexeme();
         }
     }
+    std::cout.rdbuf(old);
+
+    std::cout << function_call_instructions;
+
     paren = this->lex->getNextLexeme(); // Eat the close paren
 
 
@@ -341,6 +358,37 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
         // Get the result of the expression into D0
         emit("    MOVE.L " + dataRegStatementStack.top() + ",D0");
         dataRegStatementStack.pop(); // Remove the result of the expression from the DataRegStatementStack
+    } else if ((l.getType() == LEXEME_TYPE_KEYWORD) && (l.getSubtype() == KEYWORD_TYPE_WHILE)) {
+        // While loop is organized as follows:
+        //
+        // L1:    ; bexpr_comparison_label
+        //    <while loop comparison stuff/bexpression implementation>
+        // L2:    ; bexpr_true_label
+        //    <while loop body>
+        //    BRA L1
+        // L3:    ; bexpr_false_label
+        //    <while loop done>
+        //
+        // The bexpression needs 2 labels: one in case the comparison is true,
+        // one in case the comparison is false. If the comparison is true, we
+        // will branch to L2, which will cause us to execute the body of the
+        // while loop. If the comparison is false, we will branch to L3, causing
+        // us to break out of the loop.
+        if(this->lex->getNextLexeme().getText() != "(") {
+            error("Error: expected `(' after while.");
+        }
+        std::string bexpr_comparison_label = this->generateNewLabel();
+        std::string bexpr_true_label = this->generateNewLabel();
+        std::string bexpr_false_label = this->generateNewLabel();
+        emit(bexpr_comparison_label + ":");
+        this->bexpression(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack, bexpr_true_label, bexpr_false_label);
+        if(this->lex->getNextLexeme().getText() != ")") {
+            error("Error: expected `)' at end of if block.");
+        }
+        emit(bexpr_true_label + ":");
+        block(symbolTable,0);
+        emit("BRA " + bexpr_comparison_label);
+        emit(bexpr_false_label + ":");
     } else if ((l.getType() == LEXEME_TYPE_KEYWORD) && (l.getSubtype() == KEYWORD_TYPE_IF)) {
         if(this->lex->getNextLexeme().getText() != "(") {
             error("Error: expected `(' after if.");
