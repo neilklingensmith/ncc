@@ -86,6 +86,12 @@ void parser::error(const char *msg) {
     exit(1);
 }
 
+
+void parser::error(std::string msg) {
+    std::cerr << *input_file_name << " Line " << lex->getCurrLineNumber() << " Col " << lex->getCurrColumnNumber() << ": " << msg << "\n";
+    exit(1);
+}
+
 void parser::function() {
     unsigned int stack_frame_pos = 8; // first variable on the stack frame will start right above the return address at A6+8
     std::map<std::string, identifier*> symbolTable;
@@ -156,10 +162,15 @@ void parser::block(std::map<std::string, identifier*>&symbolTable) {
         emit(std::string(COMMENT_STRING) + std::string(" |---------------------------------|"));
     }
     // Process declarations
-    while((this->lex->peekLexeme().getType() == LEXEME_TYPE_KEYWORD) && (this->lex->peekLexeme().getSubtype() == KEYWORD_TYPE_INT)) {
+    while((this->lex->peekLexeme().getType() == LEXEME_TYPE_KEYWORD) && ((this->lex->peekLexeme().getSubtype() == KEYWORD_TYPE_INT) ||(this->lex->peekLexeme().getSubtype() == KEYWORD_TYPE_CHAR))) {
         // Found a declaration
         std::string newident = this->declaration(symbolTable, LEXEME_TYPE_SEMICOLON);
         totalBytesInStackFrame += symbolTable[newident]->getNumBytes();
+
+        // Round up stack frame size to next even integer
+        if(totalBytesInStackFrame %2 != 0) {
+            totalBytesInStackFrame++;
+        }
         symbolTable[newident]->setStackFramePosition(-totalBytesInStackFrame);
 
         if(debuglevel > 1) {
@@ -225,6 +236,10 @@ std::string parser::declaration(std::map<std::string, identifier*>&symbolTable, 
 
     if(this->lex->peekLexeme().getType() == LEXEME_TYPE_KEYWORD) {
         switch(this->lex->peekLexeme().getSubtype()) {
+        case KEYWORD_TYPE_CHAR:
+            id->setType(IDENTIFIER_TYPE_INTEGER);
+            id->setNumBytes(1);
+            break;
         case KEYWORD_TYPE_INT:
             id->setType(IDENTIFIER_TYPE_INTEGER);
             id->setNumBytes(4);
@@ -242,15 +257,23 @@ std::string parser::declaration(std::map<std::string, identifier*>&symbolTable, 
 
     // Add the new identifier to the symbol table.
     lexeme identifiername = this->lex->getNextLexeme();
+
+    // Check if there's a * before the identifier name. If so, this declaration is a pointer.
+    if (identifiername.getType() == LEXEME_TYPE_MULOP) {
+        id->setNumBytes(4); // Re-set the number of bytes this variable will take in case it was set incorrectly above.
+        id->setType(IDENTIFIER_TYPE_POINTER); // Re-set the type of this identifier
+        identifiername = this->lex->getNextLexeme();
+    }
+
     symbolTable.insert(std::pair<std::string,identifier*>(identifiername.getText(),id) );
 
     // Eat the semicolon lexeme
     if(this->lex->peekLexeme().getType() & declaration_terminator) {
         l = lex->getNextLexeme();
     } else {
-        char msg[200];
-        snprintf(msg, 200, "Expected semicolon at end of declaration. Got `%s' instead.", this->lex->peekLexeme().getText().c_str());
-        error(msg);
+//        char msg[200];
+//        snprintf(msg, 200, "Expected semicolon at end of declaration. Got `%s' instead.", this->lex->peekLexeme().getText().c_str());
+        error("Expected semicolon at end of declaration. Got `" +this->lex->peekLexeme().getText() +"' instead.");
     }
     return identifiername.getText();
 }
@@ -308,9 +331,7 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
             identifier *id = symbolTable[l.getText()];
             if(id == NULL) {
                 // Check to make sure the symbol is in our symbol table.
-                char msg[100];
-                snprintf(msg, sizeof(msg), "Identifier `%s' undeclared.", l.getText().c_str());
-                this->error(msg);
+                this->error("Identifier `" + l.getText() + "' undeclared.");
             }
             lexeme idlexeme = l; // Save the identifier lexeme
             l = this->lex->getNextLexeme(); // Eat the `='

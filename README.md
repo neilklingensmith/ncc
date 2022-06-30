@@ -23,7 +23,7 @@ Grammar
     term          -> <signedfactor> [(`*' | `/') <factor>]*
     signedfactor  -> [(`+' | `-')] <factor>
     factor        -> constant | identifier | `(' <expression> `)'
-                   | funcname ( [identifier ,]* ) ;
+                   | identifier ( [identifier ,]* ) ;
 
 
 NOTE: Productions for logical expressions are on page 402 of the dragon book.

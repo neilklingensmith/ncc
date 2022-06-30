@@ -3,6 +3,7 @@
 
 
 #define IDENTIFIER_TYPE_INTEGER   0x301
+#define IDENTIFIER_TYPE_POINTER   0x301
 
 class identifier {
 private:

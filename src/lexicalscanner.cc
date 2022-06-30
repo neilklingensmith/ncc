@@ -12,6 +12,7 @@
 static std::map<std::string, int> keyword_map = {
 {"if", KEYWORD_TYPE_IF},
 {"int", KEYWORD_TYPE_INT},
+{"char", KEYWORD_TYPE_CHAR},
 {"while", KEYWORD_TYPE_WHILE},
 {"return", KEYWORD_TYPE_RETURN},
 };
@@ -108,19 +109,18 @@ std::string lexicalScanner::getRelOp() {
     return relop;
 }
 
-
 int lexicalScanner::getNum() {
     std::string num;
 
     if(!isDigit(this->look)) {
         Expected("Integer");
     }
-    while(isDigit(this->look)) {
+    while(isDigit(this->look) || this->look == 'x') {
         num.push_back(this->look);
         getChar();
     }
     skipWhite();
-    return std::stoi(num);
+    return std::stoi(num, NULL, 0);
 }
 
 std::string lexicalScanner::getOp() {
