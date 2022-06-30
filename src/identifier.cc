@@ -11,6 +11,7 @@ identifier::identifier(unsigned int type) {
     this->arrayLength = 0; // Indicate that this identifier is not an array
     this->stackFramePosition = -1; // Flag invalid stack frame position
     this->type = type;
+    this->arrayBytesPerElement = -1;
 }
 
 void identifier::setType(unsigned int newType) {
@@ -44,4 +45,12 @@ void identifier::setArrayLength(unsigned int arrLen) {
 
 unsigned int identifier::getArrayLength() {
     return this->arrayLength;
+}
+
+unsigned int identifier::getArrayBytesPerElement() {
+    return this->arrayBytesPerElement;
+}
+
+void identifier::setArrayBytesPerElement(unsigned int bytesPerElem) {
+    this->arrayBytesPerElement = bytesPerElem;
 }

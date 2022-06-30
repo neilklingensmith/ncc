@@ -11,6 +11,7 @@ private:
     unsigned int arrayLength;
     unsigned int type;
     unsigned int nbytes;
+    unsigned int arrayBytesPerElement;
     int stackFramePosition; // Relative to the frame pointer
 public:
     identifier(unsigned int type);
@@ -23,5 +24,7 @@ public:
     int getStackFramePosition();
     void setArrayLength(unsigned int arrLen);
     unsigned int getArrayLength();
+    unsigned int getArrayBytesPerElement();
+    void setArrayBytesPerElement(unsigned int bytesPerElem);
 };
 #endif

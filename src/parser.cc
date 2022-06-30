@@ -268,6 +268,7 @@ std::string parser::declaration(std::map<std::string, identifier*>&symbolTable, 
 
     lexeme l ;
     identifier *id = new identifier;
+    unsigned int datatype = this->lex->peekLexeme().getSubtype(); // Record the data type of this declaration.
 
     if(this->lex->peekLexeme().getType() == LEXEME_TYPE_KEYWORD) {
         switch(this->lex->peekLexeme().getSubtype()) {
@@ -296,6 +297,12 @@ std::string parser::declaration(std::map<std::string, identifier*>&symbolTable, 
     // Check if there's a * before the identifier name. If so, this declaration is a pointer.
     if (identifiername.getType() == LEXEME_TYPE_MULOP) {
         id->setNumBytes(4); // Re-set the number of bytes this variable will take in case it was set incorrectly above.
+
+        if(datatype == KEYWORD_TYPE_CHAR) {
+            id->setArrayBytesPerElement(1);
+        } else if(datatype == KEYWORD_TYPE_INT) {
+            id->setArrayBytesPerElement(4);
+        }
         id->setType(IDENTIFIER_TYPE_POINTER); // Re-set the type of this identifier
         identifiername = this->lex->getNextLexeme();
     }
@@ -386,9 +393,9 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
                 lexeme closeSquareBracket = this->lex->getNextLexeme(); // Eat the `]'
 
                 // Multiply the index by the size of the element
-                if(id->getNumBytes() == 2) {
+                if(id->getArrayBytesPerElement() == 2) {
                     emit("    LSL.L #1," + arrayIndexReg);
-                } else if(id->getNumBytes() == 4) {
+                } else if(id->getArrayBytesPerElement() == 4) {
                     emit("    LSL.L #2," + arrayIndexReg);
                 }
 
@@ -404,9 +411,18 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
 
 
             // Store the result on the stack at the location allocated to the identifier
-
             std::string opsz = getSizeSuffix(expressionSize);
-            emit("    MOVE." + opsz + " " + dataRegStatementStack.top() + "," + std::to_string(id->getStackFramePosition()) + "(A6" + arrayIndexReg + ")");
+            if(id->getType() == IDENTIFIER_TYPE_POINTER) {
+                std::string pointerReg = addrRegFreeStack.top(); // Get the register name of the index register
+                addrRegFreeStack.pop();
+                addrRegStatementStack.push(pointerReg);
+                emit("    MOVEA.L " + std::to_string(id->getStackFramePosition()) + "(A6)," + pointerReg );
+                emit("    MOVE." + opsz + " " + dataRegStatementStack.top() + "," + "("+ pointerReg + arrayIndexReg + ")");
+                addrRegStatementStack.pop();
+                addrRegFreeStack.push(pointerReg);
+            } else {
+                emit("    MOVE." + opsz + " " + dataRegStatementStack.top() + "," + std::to_string(id->getStackFramePosition()) + "(A6" + arrayIndexReg + ")");
+            } 
         }
     } else if ((l.getType() == LEXEME_TYPE_MULOP) && (l.getText() == "*")) {
         // If the LHS of the statement starts with a `*', the destination is an address in memory.
@@ -741,7 +757,7 @@ unsigned int parser::factor(std::map<std::string, identifier*>&symbolTable, std:
 #endif
     case LEXEME_TYPE_PARENTHESES:
     case LEXEME_TYPE_IDENT:
-        data(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
+        factorSize = data(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
         break;
 
     case LEXEME_TYPE_MULOP:
@@ -753,7 +769,7 @@ unsigned int parser::factor(std::map<std::string, identifier*>&symbolTable, std:
             l = this->lex->getNextLexeme(); // Eat the `*'
 
             // Get the address of the dereferenced pointer.
-            calculateAddressReference(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
+            factorSize = calculateAddressReference(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
 
             areg = addrRegStatementStack.top(); // areg is the output of calculateAddressReference
             dreg = dataRegStatementStack.top(); // areg is an address register that we will use to point into memory
@@ -789,12 +805,14 @@ unsigned int parser::factor(std::map<std::string, identifier*>&symbolTable, std:
  * int val;
  * val = *(*(ptr+offset)+10)
  */
-void parser::calculateAddressReference (std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack) {
+unsigned int parser::calculateAddressReference (std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack) {
+
+    unsigned int dataSize = 0;
     std::string dreg, areg; // Data register name used to process this factor
     // First, we will process the pointer as if it is a factor. The
     // call to data() returns the address reference in a data register
     // on the top of the dataRegStatementStack.
-    data(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
+    dataSize = data(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
     
     // When data returns, the address of the pointer will be in a data
     // register at the top of the dataRegStatementStack. We need to get
@@ -807,10 +825,11 @@ void parser::calculateAddressReference (std::map<std::string, identifier*>&symbo
     addrRegStatementStack.push(areg);
     emit("    MOVEA.L " + dreg + "," + areg);
 
-
+    return dataSize;
 }
 
-void parser::data (std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack) {
+unsigned int parser::data (std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack) {
+    unsigned int dataSize = 0;
     lexeme l;
     identifier *id;
     std::string dreg; // Data register name used to process this factor
@@ -821,12 +840,17 @@ void parser::data (std::map<std::string, identifier*>&symbolTable, std::stack<st
         if((this->lex->peekLexeme().getType() == LEXEME_TYPE_PARENTHESES) && (this->lex->peekLexeme().getText() == "(")) {
             
             do_function_call(l, symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
+            dataSize = 4;
         } else {
             id = symbolTable[l.getText()];
             if(id == NULL) {
                 // Check to make sure the symbol is in our symbol table.
-//                snprintf(msg, sizeof(msg), "Identifier `%s' undeclared.", this->lex->peekLexeme().getText().c_str());
                 this->error("Identifier `" + this->lex->peekLexeme().getText() + "' undeclared.");
+            }
+            if(id->getArrayLength() != 0) {
+                dataSize = id->getNumBytes() / id->getArrayLength();
+            } else {
+                dataSize = id->getNumBytes();
             }
             dreg = dataRegFreeStack.top();
             dataRegFreeStack.pop();
@@ -840,7 +864,7 @@ void parser::data (std::map<std::string, identifier*>&symbolTable, std::stack<st
             this->error("Error: Expected `(' before `" + this->lex->peekLexeme().getText() + "'.");
         }
         // Process the expression
-        this->expression(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
+        dataSize = this->expression(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
         if(this->lex->peekLexeme().getText() != ")") {
             this->error("Error: Expected `)' at the end of the expression. Got " +  this->lex->peekLexeme().getText() + "' instead.");
         } else {
@@ -849,7 +873,7 @@ void parser::data (std::map<std::string, identifier*>&symbolTable, std::stack<st
         break;
     case LEXEME_TYPE_MULOP:
         if(l.getText() == "*") {
-            data(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
+            dataSize = data(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
         } else {
             error("Eroor: Trying to process pointer in parser::factor and got " + l.getText());
         }
@@ -859,6 +883,7 @@ void parser::data (std::map<std::string, identifier*>&symbolTable, std::stack<st
         break;
 
     }
+    return dataSize;
 }
 std::string parser::getSizeSuffix(unsigned int factorSize) {
     std::string szsuffix;
