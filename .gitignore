@@ -1,4 +1,5 @@
 *.swp
+*.swo
 ncc
 *.o
 tags
