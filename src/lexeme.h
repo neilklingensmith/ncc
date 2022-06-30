@@ -24,6 +24,7 @@
 #define LEXEME_TYPE_RELOP           0x0800
 #define LEXEME_TYPE_EOF             0x1000
 #define LEXEME_TYPE_SHIFTOP         0x1000
+#define LEXEME_TYPE_SQUARE_BRACKET  0x2000
 
 /////////////////////////////////////////////////////
 // Preprocessor Definitions

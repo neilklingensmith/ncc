@@ -300,6 +300,10 @@ lexeme lexicalScanner::getNextLexeme() {
         getChar();
         skipWhite();
         currLexeme.setType(LEXEME_TYPE_PARENTHESES);
+    } else if (look == '[' || look == ']') {
+        getChar();
+        skipWhite();
+        currLexeme.setType(LEXEME_TYPE_SQUARE_BRACKET);
     } else if (look == '{') {
 #ifdef DEBUG
 #if DEBUG > 1

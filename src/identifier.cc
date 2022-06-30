@@ -8,6 +8,8 @@ identifier::identifier() {
 
 
 identifier::identifier(unsigned int type) {
+    this->arrayLength = 0; // Indicate that this identifier is not an array
+    this->stackFramePosition = -1; // Flag invalid stack frame position
     this->type = type;
 }
 
@@ -36,3 +38,10 @@ void identifier::setStackFramePosition(int newStackFramePosition) {
 }
 
 
+void identifier::setArrayLength(unsigned int arrLen) {
+    this->arrayLength = arrLen;
+}
+
+unsigned int identifier::getArrayLength() {
+    return this->arrayLength;
+}

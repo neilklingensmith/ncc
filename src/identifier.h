@@ -8,6 +8,7 @@
 
 class identifier {
 private:
+    unsigned int arrayLength;
     unsigned int type;
     unsigned int nbytes;
     int stackFramePosition; // Relative to the frame pointer
@@ -20,5 +21,7 @@ public:
     unsigned int getNumBytes();
     void setStackFramePosition(int newPosition);
     int getStackFramePosition();
+    void setArrayLength(unsigned int arrLen);
+    unsigned int getArrayLength();
 };
 #endif

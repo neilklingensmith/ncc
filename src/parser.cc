@@ -28,7 +28,7 @@ void parser::do_function_call(lexeme l, std::map<std::string, identifier*>&symbo
     std::string text = tmp_cout_buf.str(); // text will now contain "Bla\n"
 
     // Process function arguments
-    while(this->lex->peekLexeme().getType() == LEXEME_TYPE_IDENT) {
+    while((this->lex->peekLexeme().getType() == LEXEME_TYPE_IDENT) || (this->lex->peekLexeme().getType() == LEXEME_TYPE_INTEGER) || (this->lex->peekLexeme().getType() == LEXEME_TYPE_ADDOP)){
         // expression
         this->expression(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
 
@@ -272,12 +272,10 @@ std::string parser::declaration(std::map<std::string, identifier*>&symbolTable, 
     if(this->lex->peekLexeme().getType() == LEXEME_TYPE_KEYWORD) {
         switch(this->lex->peekLexeme().getSubtype()) {
         case KEYWORD_TYPE_CHAR:
-//            std::cerr << "found keyword char\n";
             id->setType(IDENTIFIER_TYPE_INTEGER);
             id->setNumBytes(1);
             break;
         case KEYWORD_TYPE_INT:
-//            std::cerr << "found keyword int\n";
             id->setType(IDENTIFIER_TYPE_INTEGER);
             id->setNumBytes(4);
             break;
@@ -302,14 +300,20 @@ std::string parser::declaration(std::map<std::string, identifier*>&symbolTable, 
         identifiername = this->lex->getNextLexeme();
     }
 
+    if((this->lex->peekLexeme().getType() == LEXEME_TYPE_SQUARE_BRACKET) && (this->lex->peekLexeme().getText() == "[")){
+        lexeme openSquareBracket = this->lex->getNextLexeme(); // Eat the `['
+        lexeme arrayLength = this->lex->getNextLexeme(); // Eat the num array elements
+        lexeme closeSquareBracket = this->lex->getNextLexeme(); // Eat the `]'
+        id->setNumBytes(id->getNumBytes() * arrayLength.getValue()); // Update the number of bytes to be element length * num elements
+        id->setArrayLength(arrayLength.getValue());
+    }
+
     symbolTable.insert(std::pair<std::string,identifier*>(identifiername.getText(),id) );
 
     // Eat the semicolon lexeme
     if(this->lex->peekLexeme().getType() & declaration_terminator) {
         l = lex->getNextLexeme();
     } else {
-//        char msg[200];
-//        snprintf(msg, 200, "Expected semicolon at end of declaration. Got `%s' instead.", this->lex->peekLexeme().getText().c_str());
         error("Expected semicolon at end of declaration. Got `" +this->lex->peekLexeme().getText() +"' instead.");
     }
     return identifiername.getText();
@@ -323,9 +327,7 @@ std::string parser::declaration(std::map<std::string, identifier*>&symbolTable, 
  *
  *   symbolTable is the block's symbol table.
  */
-
 void parser::statement(std::map<std::string, identifier*>&symbolTable) {
-//    std::cout << "\n\nProcessing statement..." << std::endl;
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     // Create a stack of data registers and address registers that are available for use in this statement
@@ -365,12 +367,33 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
         } else {
             // Assignment statement
             // Look up the identifier in the symbol table for this block.
+            unsigned int arrayIndex = -1;
             identifier *id = symbolTable[l.getText()];
+            std::string arrayIndexReg;
+
             if(id == NULL) {
                 // Check to make sure the symbol is in our symbol table.
                 this->error("Identifier `" + l.getText() + "' undeclared.");
             }
             lexeme idlexeme = l; // Save the identifier lexeme
+
+            // The following block handles array indexing for the LHS of an assignment. The output of this block is the arrayIndexReg, which contains the index into the array. 
+            if((this->lex->peekLexeme().getType() == LEXEME_TYPE_SQUARE_BRACKET) && (this->lex->peekLexeme().getText() == "[")){
+                lexeme openSquareBracket = this->lex->getNextLexeme(); // Eat the `['
+                this->expression(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
+                arrayIndexReg = dataRegStatementStack.top(); // Get the register name of the index register
+                arrayIndexReg = "," + arrayIndexReg;
+                lexeme closeSquareBracket = this->lex->getNextLexeme(); // Eat the `]'
+
+                // Multiply the index by the size of the element
+                if(id->getNumBytes() == 2) {
+                    emit("    LSL.L #1," + arrayIndexReg);
+                } else if(id->getNumBytes() == 4) {
+                    emit("    LSL.L #2," + arrayIndexReg);
+                }
+
+            }
+
             l = this->lex->getNextLexeme(); // Eat the `='
             if(l.getType() != LEXEME_TYPE_ASSIGNMENTOP) {
                 std::cerr << "[parser::statement] Got lexeme type " << l.getType() << std::endl;
@@ -379,10 +402,11 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
             // Process the expression
             unsigned int expressionSize = this->expression(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
 
+
             // Store the result on the stack at the location allocated to the identifier
 
             std::string opsz = getSizeSuffix(expressionSize);
-            emit("    MOVE." + opsz + " " + dataRegStatementStack.top() + "," + std::to_string(id->getStackFramePosition()) + "(A6)");
+            emit("    MOVE." + opsz + " " + dataRegStatementStack.top() + "," + std::to_string(id->getStackFramePosition()) + "(A6" + arrayIndexReg + ")");
         }
     } else if ((l.getType() == LEXEME_TYPE_MULOP) && (l.getText() == "*")) {
         // If the LHS of the statement starts with a `*', the destination is an address in memory.
@@ -566,7 +590,6 @@ unsigned int parser::expression(std::map<std::string, identifier*>&symbolTable, 
 
         std::string opsz = getSizeSuffix(expressionSize);
         // Now add or subtract the terms
-        char msg[200];
         std::string op1, op2;
         op1 = dataRegStatementStack.top();
         dataRegStatementStack.pop();
@@ -577,8 +600,7 @@ unsigned int parser::expression(std::map<std::string, identifier*>&symbolTable, 
         } else if (sign_lexeme.getText() == "-") {
             emit("    SUB." + opsz +" "+ op1 + "," + op2);
         } else {
-            snprintf(msg, sizeof(msg), "Error: expected `+' or `-' in expression. Got \"%s\"", sign_lexeme.getText().c_str());
-            error(msg);
+            error("Error: expected `+' or `-' in expression. Got \"" + sign_lexeme.getText() + "\".");
         }
         dataRegFreeStack.push(op1); // Reclaim one of the data registers
         dataRegStatementStack.push(op2); // Put the result register on the statement stack
