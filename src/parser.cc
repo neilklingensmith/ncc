@@ -609,9 +609,73 @@ void parser::factor(std::map<std::string, identifier*>&symbolTable, std::stack<s
             l = this->lex->getNextLexeme(); // Eat the close paren
         }
         break;
+    case LEXEME_TYPE_MULOP:
+        if(l.getText() == "*") {
+            std::cerr << "[parser::factor] found pointer\n";
+            pointer(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
+        } else {
+            error("Eroor: Trying to process pointer in parser::factor and got " + l.getText());
+        }
+        break;
     default:
         snprintf(msg, sizeof(msg), "Error processing factor. Expected integer constant or identifier. Got `%s'", l.getText().c_str());
         error(msg);
         break;
+    }
+}
+
+void parser::pointer (std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack) {
+    lexeme l;
+    identifier *id;
+    std::string dreg; // Data register name used to process this factor
+    l = this->lex->getNextLexeme(); // Get the next lexeme. Should be a constant, identifier, or open parentheses
+
+    std::cerr << "[parser::pointer] got lexeme " + l.getText() << "\n";
+    switch(l.getType()) {
+    case LEXEME_TYPE_IDENT:
+        if((this->lex->peekLexeme().getType() == LEXEME_TYPE_PARENTHESES) && (this->lex->peekLexeme().getText() == "(")) {
+            
+            do_function_call(l, symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
+        } else {
+            id = symbolTable[l.getText()];
+            if(id == NULL) {
+                // Check to make sure the symbol is in our symbol table.
+//                snprintf(msg, sizeof(msg), "Identifier `%s' undeclared.", this->lex->peekLexeme().getText().c_str());
+                this->error("Identifier `" + this->lex->peekLexeme().getText() + "' undeclared.");
+            }
+            dreg = dataRegFreeStack.top();
+            dataRegFreeStack.pop();
+            dataRegStatementStack.push(dreg);
+            emit("    MOVE.L " + std::to_string(id->getStackFramePosition()) + "(A6),"+dreg);
+        }
+        break;
+    case LEXEME_TYPE_PARENTHESES:
+        // First, ensure that we got an open paren, not a closed.
+        if(l.getText() != "(") {
+//            snprintf(msg, sizeof(msg), "Error: Expected `(' before `%s'", this->lex->peekLexeme().getText().c_str());
+            this->error("Error: Expected `(' before `" + this->lex->peekLexeme().getText() + "'.");
+        }
+        // Process the expression
+        this->expression(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
+        if(this->lex->peekLexeme().getText() != ")") {
+//            snprintf(msg, sizeof(msg), "Error: Expected `)' at the end of the expression. Got `%s' instead.", this->lex->peekLexeme().getText().c_str());
+            this->error("Error: Expected `)' at the end of the expression. Got " +  this->lex->peekLexeme().getText() + "' instead.");
+        } else {
+            l = this->lex->getNextLexeme(); // Eat the close paren
+        }
+        break;
+    case LEXEME_TYPE_MULOP:
+        if(l.getText() == "*") {
+            std::cerr << "[parser::factor] found pointer\n";
+            pointer(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
+        } else {
+            error("Eroor: Trying to process pointer in parser::factor and got " + l.getText());
+        }
+        break;
+    default:
+//        snprintf(msg, sizeof(msg), "Error processing factor. Expected integer constant or identifier. Got `%s'", l.getText().c_str());
+        error("Error processing factor. Expected integer constant or identifier. Got `" + l.getText() + "'");
+        break;
+
     }
 }
