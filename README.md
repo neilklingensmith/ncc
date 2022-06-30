@@ -22,9 +22,8 @@ Grammar
     expression    -> <term> [(`+' | `-') <term>]*
     term          -> <signedfactor> [(`*' | `/') <factor>]*
     signedfactor  -> [(`+' | `-')] <factor>
-    factor        -> constant | identifier | `(' <expression> `)'
-                   | `*' pointer
+    factor        -> constant | `*' data
                    | identifier ( [identifier ,]* ) ;
-    pointer       -> identifier | `(' <expression> `)' | `*' pointer
+    data          -> identifier | `(' <expression> `)' | `*' pointer
 
 NOTE: Productions for logical expressions are on page 402 of the dragon book.
