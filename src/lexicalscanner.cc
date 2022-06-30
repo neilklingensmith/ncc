@@ -13,6 +13,7 @@ static std::map<std::string, int> keyword_map = {
 {"if", KEYWORD_TYPE_IF},
 {"int", KEYWORD_TYPE_INT},
 {"char", KEYWORD_TYPE_CHAR},
+{"*", KEYWORD_TYPE_ASTERISK},
 {"while", KEYWORD_TYPE_WHILE},
 {"return", KEYWORD_TYPE_RETURN},
 };
@@ -137,11 +138,30 @@ std::string lexicalScanner::getOp() {
     return op;
 }
 
+void lexicalScanner::printNextLine() {
+    int c;
+    int startpos = this->is->tellg();
+    std::string linestr;
+    do {
+        c = this->is->get();
+        if((c == '\n') || (c == EOF)) {
+            break;
+        }
+//        std::cout << (char)c;
+        linestr += (char)c;
+    } while((c != '\n') && (c != EOF));
+    if(linestr.length() > 0) {
+        std::cout << ";  " << linestr << "\n";
+    }
+    is->seekg(startpos);
+}
+
 void lexicalScanner::getChar() {
     this->look = this->is->get();
     if(this->look == '\n') {
         this->currLineNumber++;
         currColumnNumber = 0;
+        printNextLine();
     }
     if((this->look != '\n') && (this->look != '\r')){
         currColumnNumber++;
@@ -205,7 +225,11 @@ lexeme lexicalScanner::getNextLexeme() {
 //            std::cerr << "[getNextLexeme] Setting lexeme subtype to " << currLexeme.getSubtype() << std::endl;
         } else {
             // Got identifier
-//            std::cerr << "[getNextLexeme] got identifier \"" << this->currLexeme.getText() << "\"\n";
+#ifdef DEBUG
+#if DEBUG > 1
+            std::cerr << "[getNextLexeme] got identifier \"" << this->currLexeme.getText() << "\"\n";
+#endif
+#endif
             currLexeme.setType(LEXEME_TYPE_IDENT);
         }
         // Look up the lexeme
@@ -215,7 +239,11 @@ lexeme lexicalScanner::getNextLexeme() {
         currLexeme.setValue(n);
         currLexeme.setText(numstr);
         currLexeme.setType(LEXEME_TYPE_INTEGER);
-        //std::cout << "[getNextLexeme] got number " << n << "\n";
+#ifdef DEBUG
+#if DEBUG > 1
+        std::cerr << "[getNextLexeme] got number " << n << "\n";
+#endif
+#endif
     } else if (isOp(look)) {
         std::string op = getOp();
         if(op == "+" || op == "-") {
@@ -248,25 +276,45 @@ lexeme lexicalScanner::getNextLexeme() {
         }
 
         currLexeme.setText(op);
-//        std::cout << "[getNextLexeme] got operator " << op << "\n";
+#ifdef DEBUG
+#if DEBUG > 1
+        std::cerr << "[getNextLexeme] got operator " << op << "\n";
+#endif
+#endif
     } else if (look == ';') {
-        //std::cout << "Got semicolon. End of statement\n";
+#ifdef DEBUG
+#if DEBUG > 1
+        std::cerr << "Got semicolon. End of statement\n";
+#endif
+#endif
         getChar();
         skipWhite();
         currLexeme.setType(LEXEME_TYPE_SEMICOLON);
         currLexeme.setText(";");
     } else if (look == '(' || look == ')') {
-        //std::cout << "Got parentheses\n";
+#ifdef DEBUG
+#if DEBUG > 1
+        std::cerr << "Got parentheses\n";
+#endif
+#endif
         getChar();
         skipWhite();
         currLexeme.setType(LEXEME_TYPE_PARENTHESES);
     } else if (look == '{') {
-        //std::cout << "Got open brace\n";
+#ifdef DEBUG
+#if DEBUG > 1
+        std::cerr << "Got open brace\n";
+#endif
+#endif
         getChar();
         skipWhite();
         currLexeme.setType(LEXEME_TYPE_OPENBRACE);
     } else if (look == '}') {
-        //std::cout << "Got close brace\n";
+#ifdef DEBUG
+#if DEBUG > 1
+        std::cerr << "Got close brace\n";
+#endif
+#endif
         getChar();
         skipWhite();
         currLexeme.setType(LEXEME_TYPE_CLOSEBRACE);
@@ -295,8 +343,10 @@ lexeme lexicalScanner::getNextLexeme() {
             exit(1);
         }
 #endif
+    } else if (look == EOF) {
+        currLexeme.setType(LEXEME_TYPE_EOF);
     } else {
-        //std::cout << "[getNextLexeme] Got unknown " << look << "\n";
+        std::cout << "[getNextLexeme] Got unknown " << look << "\n";
         exit(1);
     }
 

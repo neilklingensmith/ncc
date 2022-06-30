@@ -24,7 +24,10 @@ int main(int argc, char **argv) {
     parser p(argv[1], NULL);
 
     while(1) {
-        p.function();
+        int err = p.function();
+        if(err < 0) {
+            break;
+        }
     }
 #if 0
     // Parse command line parameters

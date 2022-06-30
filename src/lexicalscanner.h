@@ -21,6 +21,7 @@ private:
     void Expected(std::string err);
     void fin();
     void skipWhite();
+    void printNextLine();
     int isWhite(char c);
     int isOp(char c);
     int isAddop(char c);
