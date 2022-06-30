@@ -3,6 +3,7 @@
 
 
 #define IDENTIFIER_TYPE_INTEGER   0x301
+#define IDENTIFIER_TYPE_CHAR      0x302
 
 class identifier {
 private:

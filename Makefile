@@ -10,6 +10,7 @@ SIZE = size
 
 CFLAGS = -Wall
 CFLAGS += -g
+#CFLAGS += -DDEBUG=3
 
 OBJS +=  \
 	ncc.o \

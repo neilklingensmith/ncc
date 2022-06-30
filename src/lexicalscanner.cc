@@ -12,6 +12,8 @@
 static std::map<std::string, int> keyword_map = {
 {"if", KEYWORD_TYPE_IF},
 {"int", KEYWORD_TYPE_INT},
+{"char", KEYWORD_TYPE_CHAR},
+{"*", KEYWORD_TYPE_ASTERISK},
 {"while", KEYWORD_TYPE_WHILE},
 {"return", KEYWORD_TYPE_RETURN},
 };
@@ -224,7 +226,11 @@ lexeme lexicalScanner::getNextLexeme() {
 //            std::cerr << "[getNextLexeme] Setting lexeme subtype to " << currLexeme.getSubtype() << std::endl;
         } else {
             // Got identifier
-//            std::cerr << "[getNextLexeme] got identifier \"" << this->currLexeme.getText() << "\"\n";
+#ifdef DEBUG
+#if DEBUG > 1
+            std::cerr << "[getNextLexeme] got identifier \"" << this->currLexeme.getText() << "\"\n";
+#endif
+#endif
             currLexeme.setType(LEXEME_TYPE_IDENT);
         }
         // Look up the lexeme
@@ -234,7 +240,11 @@ lexeme lexicalScanner::getNextLexeme() {
         currLexeme.setValue(n);
         currLexeme.setText(numstr);
         currLexeme.setType(LEXEME_TYPE_INTEGER);
-        //std::cout << "[getNextLexeme] got number " << n << "\n";
+#ifdef DEBUG
+#if DEBUG > 1
+        std::cerr << "[getNextLexeme] got number " << n << "\n";
+#endif
+#endif
     } else if (isOp(look)) {
         std::string op = getOp();
         if(op == "+" || op == "-") {
@@ -267,25 +277,45 @@ lexeme lexicalScanner::getNextLexeme() {
         }
 
         currLexeme.setText(op);
-//        std::cout << "[getNextLexeme] got operator " << op << "\n";
+#ifdef DEBUG
+#if DEBUG > 1
+        std::cerr << "[getNextLexeme] got operator " << op << "\n";
+#endif
+#endif
     } else if (look == ';') {
-        //std::cout << "Got semicolon. End of statement\n";
+#ifdef DEBUG
+#if DEBUG > 1
+        std::cerr << "Got semicolon. End of statement\n";
+#endif
+#endif
         getChar();
         skipWhite();
         currLexeme.setType(LEXEME_TYPE_SEMICOLON);
         currLexeme.setText(";");
     } else if (look == '(' || look == ')') {
-        //std::cout << "Got parentheses\n";
+#ifdef DEBUG
+#if DEBUG > 1
+        std::cerr << "Got parentheses\n";
+#endif
+#endif
         getChar();
         skipWhite();
         currLexeme.setType(LEXEME_TYPE_PARENTHESES);
     } else if (look == '{') {
-        //std::cout << "Got open brace\n";
+#ifdef DEBUG
+#if DEBUG > 1
+        std::cerr << "Got open brace\n";
+#endif
+#endif
         getChar();
         skipWhite();
         currLexeme.setType(LEXEME_TYPE_OPENBRACE);
     } else if (look == '}') {
-        //std::cout << "Got close brace\n";
+#ifdef DEBUG
+#if DEBUG > 1
+        std::cerr << "Got close brace\n";
+#endif
+#endif
         getChar();
         skipWhite();
         currLexeme.setType(LEXEME_TYPE_CLOSEBRACE);
