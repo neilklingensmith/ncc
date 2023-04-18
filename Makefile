@@ -9,8 +9,10 @@ CXX = g++
 SIZE = size
 
 CFLAGS = -Wall
-CFLAGS += -g
+CFLAGS += -g -std=c++11
 #CFLAGS += -DDEBUG=3
+
+UNAME := $(shell uname)
 
 OBJS +=  \
 	ncc.o \
@@ -34,7 +36,9 @@ all: bin
 
 bin: $(OBJ)
 	$(CXX)  $(CFLAGS) obj/* -o ncc
+ifeq ($(UNAME), Linux)
 	ctags -R src/*
+endif
 	$(SIZE) $(OBJFILE)
 
 clean:

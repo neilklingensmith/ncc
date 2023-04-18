@@ -108,6 +108,11 @@ void parser::error(std::string msg) {
     exit(1);
 }
 
+void parser::warning(std::string msg) {
+    std::cerr << *input_file_name << " Line " << lex->getCurrLineNumber() << " Col " << lex->getCurrColumnNumber() << ": " << msg << "\n";
+}
+
+
 int parser::function() {
     unsigned int stack_frame_pos = 8; // first variable on the stack frame will start right above the return address at A6+8
     std::map<std::string, identifier*> symbolTable;
@@ -386,8 +391,10 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
 
             // The following block handles array indexing for the LHS of an assignment. The output of this block is the arrayIndexReg, which contains the index into the array. 
             if((this->lex->peekLexeme().getType() == LEXEME_TYPE_SQUARE_BRACKET) && (this->lex->peekLexeme().getText() == "[")){
+
                 lexeme openSquareBracket = this->lex->getNextLexeme(); // Eat the `['
                 this->expression(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
+
                 arrayIndexReg = dataRegStatementStack.top(); // Get the register name of the index register
                 arrayIndexReg = "," + arrayIndexReg;
                 lexeme closeSquareBracket = this->lex->getNextLexeme(); // Eat the `]'
@@ -411,7 +418,12 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
 
 
             // Store the result on the stack at the location allocated to the identifier
-            std::string opsz = getSizeSuffix(expressionSize);
+            std::string opsz = getSizeSuffix(id->getNumBytes());
+
+            // size of LHS (in bytes) is different from size of RHS. They must be different datatypes.
+            if(expressionSize != id->getNumBytes()) {
+                warning("assingment to " + std::to_string(id->getArrayBytesPerElement()) + " byte object from " + std::to_string(expressionSize) + " byte expression");
+            }
             if(id->getType() == IDENTIFIER_TYPE_POINTER) {
                 std::string pointerReg = addrRegFreeStack.top(); // Get the register name of the index register
                 addrRegFreeStack.pop();

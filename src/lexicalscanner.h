@@ -27,6 +27,7 @@ private:
     int isAddop(char c);
     int isAlNum(char c);
     int isDigit(char c);
+    int isHexDigit(char c);
     int isAlpha(char c);
     int isRelOp(char c);
     void getName(char *Name, unsigned int len);

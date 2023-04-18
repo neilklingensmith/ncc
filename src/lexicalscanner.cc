@@ -57,6 +57,15 @@ int lexicalScanner::isAlpha(char c) {
     }
 }
 
+int lexicalScanner::isHexDigit(char c) {
+    if(isDigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+
 int lexicalScanner::isDigit(char c) {
     if((c >= '0') && (c <= '9')) {
         return 1;
@@ -116,11 +125,12 @@ int lexicalScanner::getNum() {
     if(!isDigit(this->look)) {
         Expected("Integer");
     }
-    while(isDigit(this->look) || this->look == 'x') {
+    while(isHexDigit(this->look) || this->look == 'x') {
         num.push_back(this->look);
         getChar();
     }
     skipWhite();
+    std::cerr << "[getNum] got " << num << "\n";
     return std::stoi(num, NULL, 0);
 }
 

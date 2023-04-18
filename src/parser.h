@@ -27,6 +27,7 @@ public:
     void emit(char*);
     void error(const char *msg);
     void error(std::string);
+    void warning(std::string);
     int function();
     void block(std::map<std::string, identifier*>&symbolTable, int createStackFrame);
     void statement(std::map<std::string, identifier*>&symbolTable);
