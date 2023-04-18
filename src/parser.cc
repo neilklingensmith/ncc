@@ -126,6 +126,7 @@ int parser::function() {
     lexeme arglex = lex->getNextLexeme(); // Get open paren
     do {
         if(this->lex->peekLexeme().getType() == LEXEME_TYPE_PARENTHESES) {
+            lexeme parenlex = lex->getNextLexeme(); // Get open paren
             break;
         }
 
