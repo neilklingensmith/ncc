@@ -34,8 +34,9 @@
 #define KEYWORD_TYPE_INT                 0x80000002
 #define KEYWORD_TYPE_CHAR                0x80000003
 #define KEYWORD_TYPE_WHILE               0x80000004
-#define KEYWORD_TYPE_RETURN              0x80000005
-#define KEYWORD_TYPE_ASTERISK            0x80000006
+#define KEYWORD_TYPE_FOR                 0x80000005
+#define KEYWORD_TYPE_RETURN              0x80000006
+#define KEYWORD_TYPE_ASTERISK            0x80000007
 
 
 

@@ -493,12 +493,72 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
         emit(bexpr_comparison_label + ":");
         this->bexpression(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack, bexpr_true_label, bexpr_false_label);
         if(this->lex->getNextLexeme().getText() != ")") {
-            error("Error: expected `)' at end of if block.");
+            error("Error: expected `)' at end of while loop condition.");
         }
         emit(bexpr_true_label + ":");
         block(symbolTable,0);
         emit("    BRA " + bexpr_comparison_label);
         emit(bexpr_false_label + ":");
+    } else if ((l.getType() == LEXEME_TYPE_KEYWORD) && (l.getSubtype() == KEYWORD_TYPE_FOR)) {
+        // For loop is organized as follows:
+        //
+        //    <for loop initialization>
+        // L1:    ; bexpr_comparison_label
+        //    <while loop comparison stuff/bexpression implementation>
+        // L2:    ; bexpr_true_label
+        //    <for loop body>
+        //    BRA L1
+        // L3:    ; bexpr_false_label
+        //    <for loop done>
+        //
+        // The bexpression needs 2 labels: one in case the comparison is true,
+        // one in case the comparison is false. If the comparison is true, we
+        // will branch to L2, which will cause us to execute the body of the
+        // while loop. If the comparison is false, we will branch to L3, causing
+        // us to break out of the loop.
+
+        if(this->lex->getNextLexeme().getText() != "(") {
+            error("Error: expected `(' after for.");
+        }
+        std::string bexpr_comparison_label = this->generateNewLabel();
+        std::string bexpr_true_label = this->generateNewLabel();
+        std::string bexpr_false_label = this->generateNewLabel();
+        // Initialization of for() loop: a statement will initialize one variable.
+        // This happens only once before the loop starts.
+        this->statement(symbolTable); // Process statement
+
+        // Next we have a bexpression
+        if(debuglevel > 1) {
+            emit(bexpr_comparison_label + ":" + "  ; for() loop comparison label");
+        } else {
+            emit(bexpr_comparison_label + ":");
+        }
+        this->bexpression(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack, bexpr_true_label, bexpr_false_label);
+
+        if(this->lex->getNextLexeme().getText() != ";") {
+            error("Error: expected `;' after for() loop continue condition.");
+        }
+
+
+        if(debuglevel > 1) {
+            emit(bexpr_true_label + ":" + "  ; for() loop comparison true label - branch here if comparison true");
+        } else {
+            emit(bexpr_true_label + ":");
+        }
+
+        // This is update statement of  the for() loop
+        if(debuglevel > 1) {
+            emit("; for() loop update statement - update iterator on each loop round");
+        }
+        this->statement(symbolTable); // Process statement
+        if(this->lex->getNextLexeme().getText() != ")") {
+            error("Error: expected `)' at end of for loop condition.");
+        }
+        block(symbolTable,0);
+        emit("    BRA " + bexpr_comparison_label);
+        emit(bexpr_false_label + ":");
+
+
     } else if ((l.getType() == LEXEME_TYPE_KEYWORD) && (l.getSubtype() == KEYWORD_TYPE_IF)) {
         if(this->lex->getNextLexeme().getText() != "(") {
             error("Error: expected `(' after if.");

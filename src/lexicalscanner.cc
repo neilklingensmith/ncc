@@ -15,6 +15,7 @@ static std::map<std::string, int> keyword_map = {
 {"char", KEYWORD_TYPE_CHAR},
 {"*", KEYWORD_TYPE_ASTERISK},
 {"while", KEYWORD_TYPE_WHILE},
+{"for", KEYWORD_TYPE_FOR},
 {"return", KEYWORD_TYPE_RETURN},
 };
 
