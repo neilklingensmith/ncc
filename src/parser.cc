@@ -122,6 +122,12 @@ int parser::function() {
 
     emit(funcname.getText() + ":");
 
+    // While we're processing the function arguments and declarations, pause the
+    // output of the lexical scanner so we can build a coherent stack frame
+    // diagram. Line printing is resumed inside of parser::block() (called at
+    // the end of this function).
+    lex->pauseLinePrinting();
+
     // Read function arguments
     lexeme arglex = lex->getNextLexeme(); // Get open paren
     do {
@@ -221,6 +227,7 @@ void parser::block(std::map<std::string, identifier*>&symbolTable, int createSta
                 emit(std::string(COMMENT_STRING) + std::string(" |---------------------------------|"));
             }
         }
+        lex->resumeLinePrinting();
 
         // Make sure to align the stack pointer to an even address
         if((totalBytesInStackFrame % 2) != 0) {
@@ -901,6 +908,13 @@ unsigned int parser::calculateAddressReference (std::map<std::string, identifier
     return dataSize;
 }
 
+
+/*
+ * data
+ *
+ * Called from parser::factor to handle various factor types.
+ *
+ */
 unsigned int parser::data (std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack) {
     unsigned int dataSize = 0;
     lexeme l;

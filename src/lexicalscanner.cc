@@ -162,7 +162,11 @@ void lexicalScanner::printNextLine() {
         linestr += (char)c;
     } while((c != '\n') && (c != EOF));
     if(linestr.length() > 0) {
-        std::cout << ";  " << linestr << "\n";
+        if(linePrintingPaused) {
+            paused_output += "; " + linestr + "\n";
+        } else {
+            std::cout << ";  " << linestr << "\n";
+        }
     }
     is->seekg(startpos);
 }
@@ -181,6 +185,16 @@ void lexicalScanner::getChar() {
 //        std::cout << "[getChar] GOT EOF!!!\n";
 //        exit(0);
     }
+}
+
+void lexicalScanner::pauseLinePrinting() {
+    linePrintingPaused = 1;
+}
+
+void lexicalScanner::resumeLinePrinting() {
+    linePrintingPaused = 0;
+    std::cout << paused_output;
+    paused_output = "";
 }
 
 unsigned int lexicalScanner::getCurrColumnNumber() {
