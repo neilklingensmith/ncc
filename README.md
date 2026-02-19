@@ -14,6 +14,8 @@ Grammar
     statement     -> identifier (`[' <expression> `]') `=' <expression>
                    | return <expression>;
                    | if ( <bexpression> ) <block> [else <block>]
+                   | while ( <bexpression> ) <block> 
+                   | for ( <statement> ; <bexpression> ; <statement> ) <block> [else <block>]
     bexpression   -> <bterm> [`||' <bterm>]*
     bterm         -> <not-factor> [`&&' <not-factor>]*
     not-factor    -> [~] <b-factor>
