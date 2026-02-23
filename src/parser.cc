@@ -258,7 +258,13 @@ void parser::block(std::map<std::string, identifier*>&symbolTable, int createSta
 
 }
 
-
+/*
+ * emit
+ *
+ * Dumps a string to the standard output. Used for emitting assembly language
+ * instructions.
+ *
+ */
 void parser::emit(char *s) {
      *os << s << std::endl;
 }
@@ -497,12 +503,12 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
         std::string bexpr_comparison_label = this->generateNewLabel();
         std::string bexpr_true_label = this->generateNewLabel();
         std::string bexpr_false_label = this->generateNewLabel();
-        emit(bexpr_comparison_label + ":");
+        emit(bexpr_comparison_label + ": ; while loop comparison label");
         this->bexpression(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack, bexpr_true_label, bexpr_false_label);
         if(this->lex->getNextLexeme().getText() != ")") {
             error("Error: expected `)' at end of while loop condition.");
         }
-        emit(bexpr_true_label + ":");
+        emit(bexpr_true_label + ": ; while loop true label");
         block(symbolTable,0);
         emit("    BRA " + bexpr_comparison_label);
         emit(bexpr_false_label + ":");
@@ -523,6 +529,7 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
         // will branch to L2, which will cause us to execute the body of the
         // while loop. If the comparison is false, we will branch to L3, causing
         // us to break out of the loop.
+
 
         if(this->lex->getNextLexeme().getText() != "(") {
             error("Error: expected `(' after for.");
@@ -554,16 +561,23 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
         }
 
         // This is update statement of  the for() loop
+        std::ostream *os_bak = this->os; // Make a backup of os.
+        std::stringstream temp_os; // This is a stringstream that will hold the assembly instructions of the for loop update. We'll stash them here and puke them out later at the end of the loop.
+        this->os = &temp_os;
         if(debuglevel > 1) {
             emit("; for() loop update statement - update iterator on each loop round");
         }
         this->statement(symbolTable); // Process statement
+        this->os = os_bak; // Restore the original output stream for the parser.
+
         if(this->lex->getNextLexeme().getText() != ")") {
             error("Error: expected `)' at end of for loop condition.");
         }
         block(symbolTable,0);
+
+        emit(temp_os.str()); // Puke up the code for the update statement.
         emit("    BRA " + bexpr_comparison_label);
-        emit(bexpr_false_label + ":");
+        emit(bexpr_false_label + ": ; for loop comparion false label");
 
 
     } else if ((l.getType() == LEXEME_TYPE_KEYWORD) && (l.getSubtype() == KEYWORD_TYPE_IF)) {

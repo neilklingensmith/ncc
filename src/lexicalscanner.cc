@@ -131,7 +131,7 @@ int lexicalScanner::getNum() {
         getChar();
     }
     skipWhite();
-    std::cerr << "[getNum] got " << num << "\n";
+//    std::cerr << "[getNum] got " << num << "\n";
     return std::stoi(num, NULL, 0);
 }
 
