@@ -10,7 +10,7 @@ Grammar
     program       -> [<declaration>]* [<function>]*
     function      -> type <identifier> `(' [type <identifier>,]* `)' <block>
     block         -> `{' [<declaration>]* [<statement>]* `}'
-    declaration   -> (int | short | char) <identifier> (`[' integer `]');
+    declaration   -> (int | short | char) [`*'] <identifier> (`[' integer `]');
     statement     -> identifier (`[' <expression> `]') `=' <expression>
                    | return <expression>;
                    | if ( <bexpression> ) <block> [else <block>]

@@ -31,7 +31,7 @@ public:
     int function();
     void block(std::map<std::string, identifier*>&symbolTable, int createStackFrame);
     void statement(std::map<std::string, identifier*>&symbolTable);
-    std::string declaration(std::map<std::string, identifier*>&symbolTable, int declaration_terminator);
+    std::string declaration(std::map<std::string, identifier*>&symbolTable, int declaration_terminator, int global);
     void bexpression(std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack, std::string true_label, std::string false_label);
     void bterm(std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack);
     void notfactor(std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack);

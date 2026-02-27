@@ -12,6 +12,7 @@ identifier::identifier(unsigned int type) {
     this->stackFramePosition = -1; // Flag invalid stack frame position
     this->type = type;
     this->arrayBytesPerElement = -1;
+    this->global_or_local = 0;
 }
 
 void identifier::setType(unsigned int newType) {
@@ -54,3 +55,18 @@ unsigned int identifier::getArrayBytesPerElement() {
 void identifier::setArrayBytesPerElement(unsigned int bytesPerElem) {
     this->arrayBytesPerElement = bytesPerElem;
 }
+
+void identifier::setGlobal() {
+    this->global_or_local = IDENTIFIER_TYPE_GLOBAL;
+}
+
+
+void identifier::setLocal() {
+    this->global_or_local = IDENTIFIER_TYPE_LOCAL;
+}
+
+int identifier::getGlobalOrLocal() {
+    return this->global_or_local;
+}
+
+

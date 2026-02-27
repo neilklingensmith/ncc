@@ -6,6 +6,9 @@
 #define IDENTIFIER_TYPE_POINTER   0x302
 #define IDENTIFIER_TYPE_CHAR      0x303
 
+#define IDENTIFIER_TYPE_GLOBAL    0x401
+#define IDENTIFIER_TYPE_LOCAL     0x402
+
 class identifier {
 private:
     unsigned int arrayLength;
@@ -13,6 +16,7 @@ private:
     unsigned int nbytes;
     unsigned int arrayBytesPerElement;
     int stackFramePosition; // Relative to the frame pointer
+    int global_or_local;
 public:
     identifier(unsigned int type);
     identifier();
@@ -26,5 +30,8 @@ public:
     unsigned int getArrayLength();
     unsigned int getArrayBytesPerElement();
     void setArrayBytesPerElement(unsigned int bytesPerElem);
+    void setGlobal();
+    void setLocal();
+    int getGlobalOrLocal();
 };
 #endif

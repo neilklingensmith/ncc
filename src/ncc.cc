@@ -15,6 +15,8 @@ void usage(char *progname) {
 }
 
 int main(int argc, char **argv) {
+    int err;
+    std::map<std::string, identifier*> symbolTable;
 
     if (argc != 2) {
         usage(argv[0]);
@@ -24,7 +26,8 @@ int main(int argc, char **argv) {
     parser p(argv[1], NULL);
 
     while(1) {
-        int err = p.function();
+        p.declaration(symbolTable, LEXEME_TYPE_SEMICOLON, IDENTIFIER_TYPE_GLOBAL);
+        err = p.function();
         if(err < 0) {
             break;
         }

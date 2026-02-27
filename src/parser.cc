@@ -136,7 +136,7 @@ int parser::function() {
             break;
         }
 
-        std::string newident = declaration(symbolTable, LEXEME_TYPE_COMMA | LEXEME_TYPE_PARENTHESES);
+        std::string newident = declaration(symbolTable, LEXEME_TYPE_COMMA | LEXEME_TYPE_PARENTHESES, IDENTIFIER_TYPE_LOCAL);
         symbolTable[newident]->setStackFramePosition(stack_frame_pos);
         stack_frame_pos += symbolTable[newident]->getNumBytes();
 
@@ -178,8 +178,6 @@ int parser::function() {
  *
  * Handles a block of statements enclosed by `{' and `}'
  *
- *
- *
  */
 void parser::block(std::map<std::string, identifier*>&symbolTable, int createStackFrame) {
     int totalBytesInStackFrame = 0;
@@ -205,7 +203,7 @@ void parser::block(std::map<std::string, identifier*>&symbolTable, int createSta
               ((this->lex->peekLexeme().getSubtype() == KEYWORD_TYPE_INT) ||
               (this->lex->peekLexeme().getSubtype() == KEYWORD_TYPE_CHAR))) {
             // Found a declaration
-            std::string newident = this->declaration(symbolTable, LEXEME_TYPE_SEMICOLON);
+            std::string newident = this->declaration(symbolTable, LEXEME_TYPE_SEMICOLON, IDENTIFIER_TYPE_LOCAL);
             totalBytesInStackFrame += symbolTable[newident]->getNumBytes();
 
             // Make sure to align multibyte datatypes to even addresses
@@ -279,11 +277,22 @@ void parser::emit(std::string s) {
  *
  * Processes declarations and adds identifiers to the symbol table.
  *
-* Inputs:
+ * Inputs:
  *
  *   symbolTable is the block's symbol table.
+ *   
+ *   declaration_terminator is the type of terminator at the end of the
+ *                          declaration. If this is a semicolon (like at the
+ *                          end of a line), this would be passed in as
+ *                          LEXEME_TYPE_SEMICOLON.
+ *
+ *   global tells this function if this declaration is a global or local. Pass
+ *          IDENTIFIER_TYPE_LOCAL for local variables, IDENTIFIER_TYPE_GLOBAL
+ *          for global.
+ *
+ *   Returns the string name of the identifier
  */
-std::string parser::declaration(std::map<std::string, identifier*>&symbolTable, int declaration_terminator) {
+std::string parser::declaration(std::map<std::string, identifier*>&symbolTable, int declaration_terminator, int global) {
 
     lexeme l ;
     identifier *id = new identifier;
@@ -335,6 +344,7 @@ std::string parser::declaration(std::map<std::string, identifier*>&symbolTable, 
     }
 
     symbolTable.insert(std::pair<std::string,identifier*>(identifiername.getText(),id) );
+
 
     // Eat the semicolon lexeme
     if(this->lex->peekLexeme().getType() & declaration_terminator) {
@@ -429,7 +439,6 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
             }
             // Process the expression
             unsigned int expressionSize = this->expression(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
-
 
             // Store the result on the stack at the location allocated to the identifier
             std::string opsz = getSizeSuffix(id->getNumBytes());
@@ -600,16 +609,10 @@ void parser::statement(std::map<std::string, identifier*>&symbolTable) {
     if(this->lex->peekLexeme().getType() == LEXEME_TYPE_SEMICOLON) {
         l = lex->getNextLexeme();
     }
-//    std::cout << "Done processing statement...\n\n";
 }
 
 // NOTE: Productions for logical expressions are on page 402 of the dragon book
 void parser::bexpression(std::map<std::string, identifier*>&symbolTable, std::stack<std::string>&dataRegFreeStack, std::stack<std::string>&dataRegStatementStack, std::stack<std::string>&addrRegFreeStack, std::stack<std::string>&addrRegStatementStack, std::string true_label, std::string false_label) {
-//    this->bterm(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack);
-
-    // Temporary: Put relation code in here.
-//    std::cerr << "[parser::bexpression] Next lexeme is \"" << this->lex->peekLexeme().getText() << "\"\n";
-
     // Process the first factor
     this->factor(symbolTable, dataRegFreeStack, dataRegStatementStack, addrRegFreeStack, addrRegStatementStack); // Process the factor
     
